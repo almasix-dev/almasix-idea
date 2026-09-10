@@ -8,7 +8,7 @@ Smith run configurations, and **almasix-lsp** via
 
 1. Install **Almasix** from the JetBrains Marketplace (id `com.almasix.ide`),
    **or** **Settings → Plugins → ⚙ → Install Plugin from Disk…** with a zip from
-   [GitHub Releases](https://github.com/almasix-dev/editors/releases).
+   [GitHub Releases](https://github.com/almasix-dev/ide-support/releases).
 2. Restart when prompted.
 3. Open an Almasix app (folder with `bootstrap/app.py`). Ensure the project venv
    has the language server:

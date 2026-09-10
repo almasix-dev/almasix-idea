@@ -1,7 +1,7 @@
 <idea-plugin require-restart="true">
   <id>com.almasix.ide</id>
   <name>Almasix</name>
-  <vendor url="https://github.com/almasix-dev/editors">Almasix</vendor>
+  <vendor url="https://github.com/almasix-dev/ide-support">Almasix</vendor>
   <description><![CDATA[
     <p>Almasix editor support for PyCharm / IntelliJ:</p>
     <ul>
@@ -10,7 +10,7 @@
       <li>Smith run configuration templates</li>
     </ul>
     <p>Install from the JetBrains Marketplace, or sideload a zip from
-    <a href="https://github.com/almasix-dev/editors/releases">GitHub Releases</a>.</p>
+    <a href="https://github.com/almasix-dev/ide-support/releases">GitHub Releases</a>.</p>
     <p><b>Note:</b> installing, updating, or removing this plugin requires an IDE restart
     (custom language + template PSI + LSP cannot unload cleanly in-place).</p>
   ]]></description>
