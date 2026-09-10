@@ -1,0 +1,67 @@
+<idea-plugin require-restart="true">
+  <id>com.almasix.ide</id>
+  <name>Almasix</name>
+  <vendor url="https://github.com/almasix-dev/editors">Almasix</vendor>
+  <description><![CDATA[
+    <p>Almasix editor support for PyCharm / IntelliJ:</p>
+    <ul>
+      <li>Prism (<code>.prism.html</code>) — HTML/CSS colors with Prism overlays</li>
+      <li>LSP-first intelligence via <code>almasix-lsp</code> (LSP4IJ)</li>
+      <li>Smith run configuration templates</li>
+    </ul>
+    <p>Install from the JetBrains Marketplace, or sideload a zip from
+    <a href="https://github.com/almasix-dev/editors/releases">GitHub Releases</a>.</p>
+    <p><b>Note:</b> installing, updating, or removing this plugin requires an IDE restart
+    (custom language + template PSI + LSP cannot unload cleanly in-place).</p>
+  ]]></description>
+
+  <depends>com.intellij.modules.platform</depends>
+  <depends>com.intellij.modules.xml</depends>
+  <depends>com.redhat.devtools.lsp4ij</depends>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <fileType
+        name="Prism"
+        implementationClass="com.almasix.ide.PrismFileType"
+        fieldName="INSTANCE"
+        language="Prism"
+        extensions="prism.html"
+        patterns="*.prism.html"/>
+
+    <fileTypeOverrider implementation="com.almasix.ide.PrismFileTypeOverrider"/>
+    <fileTypeDetector implementation="com.almasix.ide.PrismFileTypeDetector" order="first"/>
+
+    <lang.parserDefinition language="Prism" implementationClass="com.almasix.ide.PrismParserDefinition"/>
+    <lang.fileViewProviderFactory language="Prism" implementationClass="com.almasix.ide.PrismFileViewProviderFactory"/>
+
+    <lang.syntaxHighlighterFactory language="Prism" implementationClass="com.almasix.ide.PrismSyntaxHighlighterFactory"/>
+    <editorHighlighterProvider filetype="Prism" implementationClass="com.almasix.ide.PrismEditorHighlighterProvider"/>
+
+    <typedHandler implementation="com.almasix.ide.PrismTypedHandler"/>
+    <lang.braceMatcher language="Prism" implementationClass="com.almasix.ide.PrismBraceMatcher"/>
+
+    <configurationType implementation="com.almasix.ide.SmithConfigurationType"/>
+  </extensions>
+
+  <applicationListeners>
+    <listener
+        class="com.almasix.ide.AlmasixPluginListener"
+        topic="com.intellij.ide.plugins.DynamicPluginListener"/>
+  </applicationListeners>
+
+  <extensions defaultExtensionNs="com.redhat.devtools.lsp4ij">
+    <server
+        id="almasixLsp"
+        name="Almasix Language Server"
+        factoryClass="com.almasix.ide.AlmasixLanguageServerFactory">
+      <description><![CDATA[
+        Boots almasix-lsp from the project virtualenv for Prism and Python.
+      ]]></description>
+    </server>
+    <languageMapping language="Prism" serverId="almasixLsp" languageId="prism-html"/>
+    <languageMapping language="Python" serverId="almasixLsp"/>
+    <fileNamePatternMapping patterns="*.prism.html" serverId="almasixLsp" languageId="prism-html"/>
+    <fileNamePatternMapping patterns=".env" serverId="almasixLsp" languageId="dotenv"/>
+    <fileNamePatternMapping patterns=".env.*" serverId="almasixLsp" languageId="dotenv"/>
+  </extensions>
+</idea-plugin>
