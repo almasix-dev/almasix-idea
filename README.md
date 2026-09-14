@@ -5,6 +5,8 @@
 - Prism file type with **native** HTML + Prism highlighting
 - Deep completions + unknown-symbol annotations driven by
   `smith ide:index --json`
+- **Ctrl-click / Go to Declaration** for routes, views, config, env,
+  components, tables/columns, relations
 - Smith run configurations
 - **Almasix** menu (main menu bar + Tools) → **Rebuild Index**
 
@@ -15,7 +17,7 @@ Does **not** use LSP4IJ / `almasix-lsp` (that path is for VS Code).
 1. Install **Almasix** from the JetBrains Marketplace (id `com.almasix.ide`),
    **or** **Settings → Plugins → ⚙ → Install Plugin from Disk…** with a zip from
    [GitHub Releases](https://github.com/almasix-dev/ide-support/releases)
-   (**0.2.1+** recommended; **0.2.0+** for native Almasix Idea).
+   (**0.2.2+** recommended for navigation; **0.2.1+** for the Almasix menu).
 2. Restart when prompted.
 3. Open an Almasix app (folder with `bootstrap/app.py`). Ensure the **project
    interpreter** (or a `.venv` beside that app) has Almasix installed:

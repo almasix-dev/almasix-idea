@@ -71,11 +71,11 @@ class AlmasixCompletionContributor : CompletionContributor() {
                 SymbolKind.ROUTE -> index.routes.map { (n, r) ->
                     n to "${r.methods.joinToString("|")} ${r.uri}"
                 }
-                SymbolKind.VIEW -> index.views.map { it to "view" }
+                SymbolKind.VIEW -> index.views.keys.map { it to "view" }
                 SymbolKind.CONFIG -> index.configKeys.map { it to "config" }
                 SymbolKind.TRANSLATION -> index.translationKeys.map { it to "trans" }
                 SymbolKind.MIDDLEWARE -> index.middlewareAliases.map { it to "middleware" }
-                SymbolKind.ENV -> index.envKeys.map { it to "env" }
+                SymbolKind.ENV -> index.envKeys.keys.map { it to "env" }
                 SymbolKind.TABLE -> index.tables.map { (n, t) -> n to (t.detail.ifBlank { "table" }) }
                 SymbolKind.COLUMN -> {
                     val cols = columnsFor(index, site.receiver)
@@ -87,7 +87,7 @@ class AlmasixCompletionContributor : CompletionContributor() {
                 }
                 SymbolKind.CAST -> index.casts.map { it to "cast" }
                 SymbolKind.GATE -> index.gates.map { it to "gate" }
-                SymbolKind.COMPONENT -> index.components.map { it to "component" }
+                SymbolKind.COMPONENT -> index.components.keys.map { it to "component" }
                 SymbolKind.VALIDATION -> index.validationRules.map { it to "rule" }
                 SymbolKind.DISK -> index.disks.map { it to "disk" }
                 SymbolKind.QUEUE -> index.queues.map { it to "queue" }
@@ -95,7 +95,7 @@ class AlmasixCompletionContributor : CompletionContributor() {
                 SymbolKind.MAILER -> index.mailers.map { it to "mailer" }
                 SymbolKind.INERTIA -> index.inertiaPages.map { it to "inertia" }
                 SymbolKind.SMITH -> index.smithCommands.map { it to "smith" }
-                SymbolKind.VITE -> (index.viteEntries + index.views).map { it to "asset" }
+                SymbolKind.VITE -> (index.viteEntries.keys + index.views.keys).map { it to "asset" }
                 SymbolKind.DIRECTIVE -> index.directives.map { it to "directive" }
                 SymbolKind.TEMPLATE_VAR -> {
                     val vars = index.viewHelpers + index.viewShared +
@@ -111,18 +111,18 @@ class AlmasixCompletionContributor : CompletionContributor() {
         private fun columnsFor(index: AlmasixIndex, receiver: String?): Set<String> {
             if (receiver != null) {
                 val simple = receiver.substringAfterLast('.').replaceFirstChar { it.lowercase() }
-                index.tables[simple]?.let { return it.columns }
-                index.tables[receiver]?.let { return it.columns }
+                index.tables[simple]?.let { return it.columns.keys }
+                index.tables[receiver]?.let { return it.columns.keys }
                 // User / Post model → users / posts guess
                 val plural = simple + "s"
-                index.tables[plural]?.let { return it.columns }
+                index.tables[plural]?.let { return it.columns.keys }
                 index.modelMetadata.values.firstOrNull {
                     it.module.equals(simple, true) || it.module.equals(receiver, true)
                 }?.let { meta ->
                     return (meta.fillable + meta.casts.keys).toSet()
                 }
             }
-            return index.tables.values.flatMap { it.columns }.toSet()
+            return index.tables.values.flatMap { it.columns.keys }.toSet()
         }
 
         private fun relationsFor(index: AlmasixIndex, receiver: String?): Set<String> {

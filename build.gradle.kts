@@ -61,13 +61,13 @@ intellijPlatform {
         changeNotes.set(
             """
             <ul>
+              <li>0.2.2 — Ctrl-click / Go to Declaration for routes, views, config files,
+                  env keys, components, tables/columns, and relations</li>
               <li>0.2.1 — Show a real <b>Almasix</b> menu on the main menu bar and under
-                  Tools (Rebuild Index); 0.2.0 used popup=false and hid the submenu</li>
+                  Tools (Rebuild Index)</li>
               <li>0.2.0 — Almasix Idea rewrite: native completions/annotators (no LSP4IJ);
                   index via smith ide:index --json</li>
               <li>0.1.13 — Windows IDE + WSL projects: spawn almasix-lsp via wsl.exe</li>
-              <li>0.1.12 — Resolve almasix-lsp from the project Python SDK + bootstrap/.venv</li>
-              <li>0.1.0–0.1.11 — LSP-first shell (superseded by 0.2.0)</li>
             </ul>
             """.trimIndent(),
         )

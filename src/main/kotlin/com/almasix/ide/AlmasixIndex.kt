@@ -2,22 +2,28 @@ package com.almasix.ide
 
 /**
  * In-memory symbol index produced by `smith ide:index --json`.
+ *
+ * Name sets drive completions; [Located] / path maps drive Ctrl-click navigation.
  */
 data class AlmasixIndex(
     val basePath: String = "",
     val ok: Boolean = false,
     val error: String? = null,
-    val views: Set<String> = emptySet(),
+    /** Dotted view name → absolute template path. */
+    val views: Map<String, String> = emptyMap(),
     val routes: Map<String, RouteEntry> = emptyMap(),
     val configKeys: Set<String> = emptySet(),
+    /** Config file stem (`app`) → absolute path. */
+    val configFiles: Map<String, String> = emptyMap(),
     val translationKeys: Set<String> = emptySet(),
     val middlewareAliases: Set<String> = emptySet(),
-    val envKeys: Set<String> = emptySet(),
+    val envKeys: Map<String, Located> = emptyMap(),
     val tables: Map<String, TableEntry> = emptyMap(),
     val modelMetadata: Map<String, ModelEntry> = emptyMap(),
     val relations: Map<String, List<String>> = emptyMap(),
     val casts: Set<String> = emptySet(),
-    val components: Set<String> = emptySet(),
+    /** Component / x- tag name → path. */
+    val components: Map<String, String> = emptyMap(),
     val gates: Set<String> = emptySet(),
     val disks: Set<String> = emptySet(),
     val queues: Set<String> = emptySet(),
@@ -30,28 +36,44 @@ data class AlmasixIndex(
     val viewHelpers: Set<String> = emptySet(),
     val viewShared: Set<String> = emptySet(),
     val viewData: Map<String, Set<String>> = emptyMap(),
-    val viteEntries: Set<String> = emptySet(),
+    val viteEntries: Map<String, String> = emptyMap(),
     val controllerActions: Map<String, List<String>> = emptyMap(),
 ) {
-    data class RouteEntry(val uri: String, val methods: List<String>)
-    data class TableEntry(val columns: Set<String>, val detail: String = "")
+    data class Located(val path: String? = null, val line: Int = 0)
+
+    data class RouteEntry(
+        val uri: String,
+        val methods: List<String>,
+        val path: String? = null,
+        val line: Int = 0,
+    )
+
+    data class TableEntry(
+        val columns: Map<String, Located> = emptyMap(),
+        val detail: String = "",
+        val path: String? = null,
+        val line: Int = 0,
+    )
+
     data class ModelEntry(
         val fillable: List<String> = emptyList(),
         val casts: Map<String, String> = emptyMap(),
         val relations: List<String> = emptyList(),
         val module: String = "",
+        val path: String = "",
     )
 
     fun known(kind: SymbolKind, name: String): Boolean = when (kind) {
         SymbolKind.ROUTE -> routes.containsKey(name)
-        SymbolKind.VIEW -> views.contains(name)
+        SymbolKind.VIEW -> views.containsKey(name)
         SymbolKind.CONFIG -> configKeys.contains(name)
-        SymbolKind.TRANSLATION -> !translationKeys.isEmpty() && translationKeys.contains(name)
+        SymbolKind.TRANSLATION -> translationKeys.isNotEmpty() && translationKeys.contains(name)
         SymbolKind.MIDDLEWARE -> middlewareAliases.contains(name)
-        SymbolKind.ENV -> envKeys.contains(name)
+        SymbolKind.ENV -> envKeys.containsKey(name)
         SymbolKind.TABLE -> tables.containsKey(name)
         SymbolKind.GATE -> gates.contains(name)
-        SymbolKind.COMPONENT -> components.contains(name) || views.contains("components.$name")
+        SymbolKind.COMPONENT ->
+            components.containsKey(name) || views.containsKey("components.$name")
         SymbolKind.VALIDATION -> {
             val rule = name.substringBefore(":")
             validationRules.contains(rule)
@@ -62,7 +84,7 @@ data class AlmasixIndex(
         SymbolKind.MAILER -> mailers.contains(name)
         SymbolKind.INERTIA -> inertiaPages.contains(name)
         SymbolKind.SMITH -> smithCommands.contains(name)
-        SymbolKind.VITE -> viteEntries.contains(name)
+        SymbolKind.VITE -> viteEntries.containsKey(name) || views.containsKey(name)
         SymbolKind.CAST -> casts.contains(name)
         else -> true
     }

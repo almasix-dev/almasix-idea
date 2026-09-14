@@ -35,17 +35,28 @@ object AlmasixIndexLoader {
         root.getAsJsonObject("routes")?.entrySet()?.forEach { (name, value) ->
             val obj = value.asJsonObject
             routes[name] = AlmasixIndex.RouteEntry(
-                uri = obj.get("uri")?.asString ?: "",
+                uri = stringOrEmpty(obj, "uri"),
                 methods = obj.getAsJsonArray("methods")?.map { it.asString } ?: emptyList(),
+                path = stringOrNull(obj, "path"),
+                line = obj.get("line")?.asInt ?: 0,
             )
         }
         val tables = mutableMapOf<String, AlmasixIndex.TableEntry>()
         root.getAsJsonObject("tables")?.entrySet()?.forEach { (name, value) ->
             val obj = value.asJsonObject
-            val cols = obj.getAsJsonObject("columns")?.keySet() ?: emptySet()
+            val cols = mutableMapOf<String, AlmasixIndex.Located>()
+            obj.getAsJsonObject("columns")?.entrySet()?.forEach { (colName, colVal) ->
+                val col = colVal.asJsonObject
+                cols[colName] = AlmasixIndex.Located(
+                    path = stringOrNull(col, "path"),
+                    line = col.get("line")?.asInt ?: 0,
+                )
+            }
             tables[name] = AlmasixIndex.TableEntry(
                 columns = cols,
-                detail = obj.get("detail")?.asString ?: "",
+                detail = stringOrEmpty(obj, "detail"),
+                path = stringOrNull(obj, "path"),
+                line = obj.get("line")?.asInt ?: 0,
             )
         }
         val modelMetadata = mutableMapOf<String, AlmasixIndex.ModelEntry>()
@@ -59,7 +70,8 @@ object AlmasixIndexLoader {
                 fillable = obj.getAsJsonArray("fillable")?.map { it.asString } ?: emptyList(),
                 casts = casts,
                 relations = rels,
-                module = obj.get("module")?.asString ?: "",
+                module = stringOrEmpty(obj, "module"),
+                path = stringOrEmpty(obj, "path"),
             )
             relations[name] = rels
         }
@@ -77,21 +89,31 @@ object AlmasixIndexLoader {
             controllerActions[name] = value.asJsonArray.map { it.asString }
         }
 
+        val envKeys = mutableMapOf<String, AlmasixIndex.Located>()
+        root.getAsJsonObject("env_keys")?.entrySet()?.forEach { (name, value) ->
+            val obj = value.asJsonObject
+            envKeys[name] = AlmasixIndex.Located(
+                path = stringOrNull(obj, "path"),
+                line = obj.get("line")?.asInt ?: 0,
+            )
+        }
+
         return AlmasixIndex(
             basePath = stringOrNull(root, "base_path") ?: "",
             ok = root.get("ok")?.asBoolean ?: false,
             error = stringOrNull(root, "error"),
-            views = stringKeys(root, "views"),
+            views = stringMap(root, "views"),
             routes = routes,
             configKeys = stringList(root, "config_keys"),
+            configFiles = stringMap(root, "config_files"),
             translationKeys = stringList(root, "translation_keys"),
             middlewareAliases = stringList(root, "middleware_aliases"),
-            envKeys = stringKeys(root, "env_keys"),
+            envKeys = envKeys,
             tables = tables,
             modelMetadata = modelMetadata,
             relations = relations,
             casts = stringList(root, "casts"),
-            components = stringKeys(root, "components"),
+            components = stringMap(root, "components"),
             gates = stringList(root, "gates"),
             disks = stringList(root, "disks"),
             queues = stringList(root, "queues"),
@@ -104,7 +126,7 @@ object AlmasixIndexLoader {
             viewHelpers = helperNames(root),
             viewShared = stringKeys(root, "view_shared"),
             viewData = viewData,
-            viteEntries = stringKeys(root, "vite_entries"),
+            viteEntries = stringMap(root, "vite_entries"),
             controllerActions = controllerActions,
         )
     }
@@ -127,14 +149,24 @@ object AlmasixIndexLoader {
         }
     }
 
-    private fun stringOrNull(root: JsonObject, field: String): String? {
-        val el = root.get(field) ?: return null
+    private fun stringOrNull(obj: JsonObject, field: String): String? {
+        val el = obj.get(field) ?: return null
         if (el.isJsonNull) return null
         return el.asString
     }
 
+    private fun stringOrEmpty(obj: JsonObject, field: String): String =
+        stringOrNull(obj, field) ?: ""
+
     private fun stringKeys(root: JsonObject, field: String): Set<String> =
         root.getAsJsonObject(field)?.keySet() ?: emptySet()
+
+    private fun stringMap(root: JsonObject, field: String): Map<String, String> {
+        val obj = root.getAsJsonObject(field) ?: return emptyMap()
+        return obj.entrySet().associate { (k, v) ->
+            k to if (v.isJsonPrimitive) v.asString else v.toString()
+        }
+    }
 
     private fun stringList(root: JsonObject, field: String): Set<String> {
         val el = root.get(field) ?: return emptySet()

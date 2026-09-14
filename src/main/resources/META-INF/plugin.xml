@@ -44,6 +44,7 @@
 
     <completion.contributor language="any" implementationClass="com.almasix.ide.AlmasixCompletionContributor"/>
     <annotator language="any" implementationClass="com.almasix.ide.AlmasixAnnotator"/>
+    <gotoDeclarationHandler implementation="com.almasix.ide.AlmasixGotoDeclarationHandler"/>
   </extensions>
 
   <actions>

@@ -85,22 +85,29 @@ class AlmasixIndexParseTest {
               "error": null,
               "views": {"welcome": "/tmp/app/resources/views/welcome.prism.html"},
               "routes": {
-                "home": {"name": "home", "uri": "/", "methods": ["GET"], "path": null, "line": 0}
+                "home": {"name": "home", "uri": "/", "methods": ["GET"], "path": "/tmp/app/routes/web.py", "line": 12}
               },
               "config_keys": ["app.name", "app.env"],
+              "config_files": {"app": "/tmp/app/config/app.py"},
               "translation_keys": ["messages.hello"],
               "middleware_aliases": ["web", "auth"],
-              "env_keys": {"APP_KEY": {"name": "APP_KEY"}},
+              "env_keys": {"APP_KEY": {"name": "APP_KEY", "path": "/tmp/app/.env", "line": 3}},
               "tables": {
                 "users": {
                   "name": "users",
-                  "columns": {"id": {"name": "id"}, "email": {"name": "email"}},
+                  "path": "/tmp/app/database/migrations/0001_users.py",
+                  "line": 5,
+                  "columns": {
+                    "id": {"name": "id", "path": "/tmp/app/database/migrations/0001_users.py", "line": 6},
+                    "email": {"name": "email", "path": "/tmp/app/database/migrations/0001_users.py", "line": 7}
+                  },
                   "detail": "users"
                 }
               },
               "model_metadata": {
                 "User": {
                   "module": "user",
+                  "path": "/tmp/app/app/models/user.py",
                   "fillable": ["email"],
                   "casts": {"id": "int"},
                   "relations": ["posts"]
@@ -127,10 +134,13 @@ class AlmasixIndexParseTest {
         """.trimIndent()
         val index = AlmasixIndexLoader.parse(json)
         assertTrue(index.ok)
-        assertTrue(index.views.contains("welcome"))
+        assertTrue(index.views.containsKey("welcome"))
         assertEquals("/", index.routes["home"]!!.uri)
+        assertEquals("/tmp/app/routes/web.py", index.routes["home"]!!.path)
+        assertEquals(12, index.routes["home"]!!.line)
         assertTrue(index.configKeys.contains("app.name"))
-        assertTrue(index.tables["users"]!!.columns.contains("email"))
+        assertEquals("/tmp/app/config/app.py", index.configFiles["app"])
+        assertTrue(index.tables["users"]!!.columns.containsKey("email"))
         assertEquals(listOf("posts"), index.relations["User"])
         assertTrue(index.validationRules.contains("required"))
         assertTrue(index.known(SymbolKind.ROUTE, "home"))
@@ -139,5 +149,34 @@ class AlmasixIndexParseTest {
         val site = CallSiteDetector.Site(SymbolKind.ROUTE, "ho")
         val items = AlmasixCompletionContributor.symbolsFor(index, site)
         assertTrue(items.any { it.first == "home" })
+
+        assertEquals(
+            AlmasixSymbolResolver.Target("/tmp/app/routes/web.py", 12),
+            AlmasixSymbolResolver.resolve(index, SymbolKind.ROUTE, "home"),
+        )
+        assertEquals(
+            AlmasixSymbolResolver.Target("/tmp/app/resources/views/welcome.prism.html", 0),
+            AlmasixSymbolResolver.resolve(index, SymbolKind.VIEW, "welcome"),
+        )
+        assertEquals(
+            AlmasixSymbolResolver.Target("/tmp/app/config/app.py", 0),
+            AlmasixSymbolResolver.resolve(index, SymbolKind.CONFIG, "app.name"),
+        )
+        assertEquals(
+            AlmasixSymbolResolver.Target("/tmp/x", 0),
+            AlmasixSymbolResolver.resolve(index, SymbolKind.COMPONENT, "alert"),
+        )
+        assertEquals(
+            AlmasixSymbolResolver.Target("/tmp/app/.env", 3),
+            AlmasixSymbolResolver.resolve(index, SymbolKind.ENV, "APP_KEY"),
+        )
+        assertEquals(
+            AlmasixSymbolResolver.Target("/tmp/app/database/migrations/0001_users.py", 7),
+            AlmasixSymbolResolver.resolveColumn(index, "users", "email"),
+        )
+        assertEquals(
+            AlmasixSymbolResolver.Target("/tmp/app/app/models/user.py", 0),
+            AlmasixSymbolResolver.resolve(index, SymbolKind.RELATION, "posts"),
+        )
     }
 }
