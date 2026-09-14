@@ -1,6 +1,7 @@
-# Almasix for JetBrains (PyCharm / IntelliJ)
+# Almasix for JetBrains (PyCharm / WebStorm)
 
-**Almasix Idea** — native JetBrains plugin (Laravel Idea analogue):
+**Almasix Idea** — native JetBrains plugin (Laravel Idea analogue) for
+**PyCharm Professional**, **PyCharm Community**, and **WebStorm**:
 
 - Prism file type with **native** HTML + Prism highlighting
 - Deep completions + unknown-symbol annotations driven by
@@ -32,7 +33,7 @@ Does **not** use LSP4IJ / `almasix-lsp` (that path is for VS Code).
 1. Install **Almasix** from the JetBrains Marketplace (id `com.almasix.ide`),
    **or** **Settings → Plugins → ⚙ → Install Plugin from Disk…** with a zip from
    [GitHub Releases](https://github.com/almasix-dev/ide-support/releases)
-   (**0.3.1+** recommended; **0.3.0** exhaust). Prefer Almasix **0.9.1+** on the project
+   (**0.3.2+** recommended; PyCharm / WebStorm only). Prefer Almasix **0.9.1+** on the project
    interpreter.
 2. Restart when prompted.
 3. Open an Almasix app (folder with `bootstrap/app.py`). Ensure the **project

@@ -3,7 +3,8 @@
   <name>Almasix</name>
   <vendor url="https://github.com/almasix-dev/ide-support">Almasix</vendor>
   <description><![CDATA[
-    <p><b>Almasix Idea</b> — native JetBrains support for Almasix:</p>
+    <p><b>Almasix Idea</b> — native JetBrains support for Almasix
+    (PyCharm Professional, PyCharm Community, and WebStorm):</p>
     <ul>
       <li>Prism (<code>.prism.html</code>) — HTML/CSS colors with Prism overlays</li>
       <li>Deep completions + unknown-symbol annotations (routes, views, config,
@@ -16,8 +17,32 @@
     <p><b>Note:</b> installing, updating, or removing this plugin requires an IDE restart.</p>
   ]]></description>
 
+  <!-- Shared platform APIs (all JetBrains IDEs). -->
   <depends>com.intellij.modules.platform</depends>
   <depends>com.intellij.modules.xml</depends>
+
+  <!--
+    Supported products only: PyCharm Professional, PyCharm Community, WebStorm.
+    Marketplace + runtime loading use product-module aliases (see JetBrains forum /
+    Plugin Compatibility docs). Extra incompatible-with entries are no-ops when
+    the module is absent.
+  -->
+  <incompatible-with>com.intellij.modules.idea</incompatible-with>
+  <incompatible-with>com.intellij.modules.idea.community</incompatible-with>
+  <incompatible-with>com.intellij.modules.phpstorm</incompatible-with>
+  <incompatible-with>com.intellij.modules.goland</incompatible-with>
+  <incompatible-with>com.intellij.modules.datagrip</incompatible-with>
+  <incompatible-with>com.intellij.modules.rider</incompatible-with>
+  <incompatible-with>com.intellij.modules.clion</incompatible-with>
+  <incompatible-with>com.intellij.clion</incompatible-with>
+  <incompatible-with>com.intellij.modules.rubymine</incompatible-with>
+  <incompatible-with>com.intellij.modules.appcode</incompatible-with>
+  <incompatible-with>com.intellij.modules.appcode.ide</incompatible-with>
+  <incompatible-with>com.intellij.modules.androidstudio</incompatible-with>
+  <incompatible-with>com.intellij.modules.dataspell</incompatible-with>
+  <incompatible-with>com.intellij.modules.aqua</incompatible-with>
+  <incompatible-with>com.intellij.modules.rustrover</incompatible-with>
+  <incompatible-with>com.intellij.modules.mps</incompatible-with>
 
   <extensions defaultExtensionNs="com.intellij">
     <fileType
