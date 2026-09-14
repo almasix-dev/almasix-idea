@@ -6,7 +6,7 @@
 - Deep completions + unknown-symbol annotations driven by
   `smith ide:index --json`
 - Smith run configurations
-- **Almasix → Rebuild Index**
+- **Almasix** menu (main menu bar + Tools) → **Rebuild Index**
 
 Does **not** use LSP4IJ / `almasix-lsp` (that path is for VS Code).
 
@@ -15,7 +15,7 @@ Does **not** use LSP4IJ / `almasix-lsp` (that path is for VS Code).
 1. Install **Almasix** from the JetBrains Marketplace (id `com.almasix.ide`),
    **or** **Settings → Plugins → ⚙ → Install Plugin from Disk…** with a zip from
    [GitHub Releases](https://github.com/almasix-dev/ide-support/releases)
-   (**0.2.0+**).
+   (**0.2.1+** recommended; **0.2.0+** for native Almasix Idea).
 2. Restart when prompted.
 3. Open an Almasix app (folder with `bootstrap/app.py`). Ensure the **project
    interpreter** (or a `.venv` beside that app) has Almasix installed:
@@ -27,7 +27,9 @@ Does **not** use LSP4IJ / `almasix-lsp` (that path is for VS Code).
    ```
 
 4. The plugin rebuilds the index on project open and when routes/config/views/
-   models change. Use **Almasix → Rebuild Index** to force a refresh.
+   models change. Force a refresh from the menu bar:
+   **Almasix → Rebuild Index** (also under **Tools → Almasix**).
+   Or **Find Action** (`Ctrl+Shift+A` / `⌘⇧A`) → `Rebuild Index`.
 
 ## Develop
 

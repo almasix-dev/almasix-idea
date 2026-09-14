@@ -47,7 +47,10 @@
   </extensions>
 
   <actions>
-    <group id="Almasix.Menu" text="Almasix" description="Almasix Idea" popup="false">
+    <!-- popup=true so Tools gets a real "Almasix" submenu (false inlined
+         children and made the group easy to miss). -->
+    <group id="Almasix.Menu" text="Almasix" description="Almasix Idea" popup="true">
+      <add-to-group group-id="MainMenu" anchor="before" relative-to-action="HelpMenu"/>
       <add-to-group group-id="ToolsMenu" anchor="last"/>
       <action id="Almasix.RebuildIndex"
               class="com.almasix.ide.RebuildIndexAction"
