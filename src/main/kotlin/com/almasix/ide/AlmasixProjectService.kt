@@ -33,7 +33,7 @@ class AlmasixProjectService(private val project: Project) {
             AlmasixIndex.empty(error = "No Almasix application found (missing bootstrap/app.py).")
         } else {
             try {
-                AlmasixIndexLoader.load(root)
+                AlmasixIndexProcess.run(root)
             } catch (t: Throwable) {
                 LOG.warn("ide:index failed for $root", t)
                 AlmasixIndex.empty(error = t.message ?: t.toString())

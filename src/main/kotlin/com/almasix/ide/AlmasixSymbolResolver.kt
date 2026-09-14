@@ -61,9 +61,9 @@ object AlmasixSymbolResolver {
     fun resolveColumn(index: AlmasixIndex, tableHint: String?, column: String): Target? {
         if (column.isBlank()) return null
         fun fromTable(table: AlmasixIndex.TableEntry): Target? {
-            val col = table.columns[column]
-            val path = col?.path ?: table.path
-            return if (path != null) Target(path, col?.line ?: table.line) else null
+            val col = table.columns[column] ?: return null
+            val path = col.path ?: table.path ?: return null
+            return Target(path, col.line)
         }
         if (tableHint != null) {
             index.tables[tableHint]?.let { fromTable(it)?.let { t -> return t } }

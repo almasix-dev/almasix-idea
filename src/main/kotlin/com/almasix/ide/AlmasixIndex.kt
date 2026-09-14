@@ -71,10 +71,14 @@ data class AlmasixIndex(
         val detail: String = "",
         val path: String? = null,
         val line: Int = 0,
+        /** Articulate model class bound to this table (`User` for `users`). */
+        val model: String? = null,
     )
 
     data class ModelEntry(
         val fillable: List<String> = emptyList(),
+        val guarded: List<String> = emptyList(),
+        val hidden: List<String> = emptyList(),
         val casts: Map<String, String> = emptyMap(),
         val relations: List<String> = emptyList(),
         /** Relation method name → 0-based line in the model file. */
@@ -108,7 +112,18 @@ data class AlmasixIndex(
         SymbolKind.VITE -> viteEntries.containsKey(name) || views.containsKey(name)
         SymbolKind.CAST -> casts.contains(name)
         SymbolKind.TEMPLATE_VAR -> templateVarNames().contains(name.substringBefore('.'))
-        else -> true
+        SymbolKind.CONTROLLER_ACTION -> {
+            val controller = name.substringBefore('@')
+            val action = name.substringAfter('@', missingDelimiterValue = "")
+            when {
+                controllerActions.containsKey(name) -> true
+                controllerActions.containsKey(controller) && action.isEmpty() -> true
+                controllerActions[controller]?.contains(action) == true -> true
+                else -> false
+            }
+        }
+        SymbolKind.COLUMN, SymbolKind.RELATION, SymbolKind.DIRECTIVE, SymbolKind.ATTR,
+        SymbolKind.MODEL_ATTR -> true
     }
 
     fun templateVarNames(): Set<String> =
@@ -149,4 +164,8 @@ enum class SymbolKind {
     ROUTE, VIEW, CONFIG, TRANSLATION, MIDDLEWARE, ENV, ENV_VALUE, TABLE, COLUMN,
     RELATION, CAST, GATE, COMPONENT, VALIDATION, DISK, QUEUE, CACHE, MAILER,
     INERTIA, SMITH, VITE, DIRECTIVE, TEMPLATE_VAR, CONTROLLER_ACTION,
+    /** Instance attribute: ``user.name`` / ``auth().user().email``. */
+    ATTR,
+    /** Model list/dict keys: ``fillable`` / ``guarded`` / ``casts`` keys. */
+    MODEL_ATTR,
 }

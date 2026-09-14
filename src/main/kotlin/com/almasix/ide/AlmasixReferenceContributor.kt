@@ -36,7 +36,6 @@ class AlmasixReferenceProvider : PsiReferenceProvider() {
             return PsiReference.EMPTY_ARRAY
         }
         val text = element.text
-        // Skip huge leaves (whole file fallbacks)
         if (text.length > 400) return PsiReference.EMPTY_ARRAY
 
         val index = AlmasixProjectService.getInstance(element.project).index()
@@ -46,13 +45,11 @@ class AlmasixReferenceProvider : PsiReferenceProvider() {
         val fileText = document.text
         val elementStart = element.textRange.startOffset
 
-        // Probe the middle of the leaf — covers quoted content and identifiers.
         val probeOffset = (elementStart + element.textLength / 2).coerceIn(0, fileText.length)
         val hit = AlmasixSymbolLocator.hitAt(fileText, probeOffset)
             ?: AlmasixSymbolLocator.hitAt(fileText, elementStart + 1)
             ?: return PsiReference.EMPTY_ARRAY
 
-        // Reference must live on this element: hit range must intersect / be inside.
         if (hit.range.endOffset <= elementStart || hit.range.startOffset >= element.textRange.endOffset) {
             return PsiReference.EMPTY_ARRAY
         }
@@ -74,6 +71,8 @@ class AlmasixReferenceProvider : PsiReferenceProvider() {
                 element,
                 TextRange(relStart, relEnd),
                 target,
+                hit.kind,
+                hit.name,
             ),
         )
     }
@@ -83,11 +82,20 @@ class AlmasixSymbolReference(
     element: PsiElement,
     rangeInElement: TextRange,
     private val target: AlmasixSymbolResolver.Target,
+    val kind: SymbolKind,
+    val symbolName: String,
 ) : PsiReferenceBase<PsiElement>(element, rangeInElement, /* soft = */ true),
     EmptyResolveMessageProvider {
-    override fun resolve(): PsiElement? =
-        AlmasixNavigation.navigationElement(element.project, target)
+    override fun resolve(): PsiElement =
+        AlmasixSymbolPsiElement(element.project, kind, symbolName, target)
 
     override fun getUnresolvedMessagePattern(): String =
         "Cannot resolve Almasix symbol"
+
+    override fun handleElementRename(newElementName: String): PsiElement {
+        AlmasixRenamePlanner.validateNewName(kind, newElementName)?.let { reason ->
+            throw IllegalArgumentException(reason)
+        }
+        return super.handleElementRename(newElementName)
+    }
 }

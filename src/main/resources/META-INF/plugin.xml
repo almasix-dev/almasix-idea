@@ -44,8 +44,43 @@
 
     <completion.contributor language="any" implementationClass="com.almasix.ide.AlmasixCompletionContributor"/>
     <annotator language="any" implementationClass="com.almasix.ide.AlmasixAnnotator"/>
+    <annotator language="Prism" implementationClass="com.almasix.ide.AlmasixPrismStructureAnnotator"/>
+    <lang.documentationProvider language="any" implementationClass="com.almasix.ide.AlmasixDocumentationProvider"/>
+    <intentionAction>
+      <language>any</language>
+      <className>com.almasix.ide.AlmasixCreateViewIntention</className>
+      <category>Almasix</category>
+    </intentionAction>
+    <intentionAction>
+      <language>any</language>
+      <className>com.almasix.ide.AlmasixSmithMakeIntention</className>
+      <category>Almasix</category>
+    </intentionAction>
+    <intentionAction>
+      <language>Prism</language>
+      <className>com.almasix.ide.AlmasixExtractPartialIntention</className>
+      <category>Almasix</category>
+    </intentionAction>
+    <intentionAction>
+      <language>Prism</language>
+      <className>com.almasix.ide.AlmasixIncludeToComponentIntention</className>
+      <category>Almasix</category>
+    </intentionAction>
+    <intentionAction>
+      <language>any</language>
+      <className>com.almasix.ide.AlmasixInsertRelationStubIntention</className>
+      <category>Almasix</category>
+    </intentionAction>
     <gotoDeclarationHandler implementation="com.almasix.ide.AlmasixGotoDeclarationHandler"/>
     <psi.referenceContributor implementation="com.almasix.ide.AlmasixReferenceContributor"/>
+    <findUsagesHandlerFactory implementation="com.almasix.ide.AlmasixFindUsagesHandlerFactory"/>
+    <referencesSearchQueryExecutor implementation="com.almasix.ide.AlmasixReferencesSearchExecutor"/>
+    <renamePsiElementProcessor implementation="com.almasix.ide.AlmasixRenameProcessor"/>
+    <toolWindow
+        id="Almasix"
+        anchor="right"
+        icon="/icons/almasix.svg"
+        factoryClass="com.almasix.ide.AlmasixToolWindowFactory"/>
   </extensions>
 
   <actions>
@@ -63,6 +98,14 @@
               text="Rebuild Index"
               description="Rebuild the Almasix symbol index (smith ide:index --json)"
               icon="/icons/almasix.svg"/>
+      <separator/>
+      <group id="Almasix.New"
+             class="com.almasix.ide.AlmasixMakeActionGroup"
+             text="New…"
+             description="Generate Almasix classes via smith make:*"
+             popup="true">
+        <add-to-group group-id="NewGroup" anchor="last"/>
+      </group>
     </group>
   </actions>
 

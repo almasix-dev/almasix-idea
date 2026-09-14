@@ -57,6 +57,7 @@ class PrismLexerTest {
     private fun tokens(text: String): List<Pair<IElementType, String>> {
         val lexer = PrismLexer()
         lexer.start(text, 0, text.length, 0)
+        assertEquals(text.length, lexer.bufferEnd)
         val out = mutableListOf<Pair<IElementType, String>>()
         while (true) {
             val type = lexer.tokenType ?: break
@@ -65,5 +66,14 @@ class PrismLexerTest {
             lexer.advance()
         }
         return out
+    }
+
+    @Test
+    fun `unknown at sequences stay host text`() {
+        // Hits directive scanner return -1 paths (not a known directive / email-like).
+        assertEquals(
+            listOf(PrismTokens.TEMPLATE_DATA to "@notARealDirective"),
+            tokens("@notARealDirective"),
+        )
     }
 }

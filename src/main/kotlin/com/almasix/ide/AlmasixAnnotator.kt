@@ -67,6 +67,7 @@ class AlmasixAnnotator : Annotator {
             "Unknown Almasix ${hit.kind.name.lowercase()}: ${hit.name}",
         )
             .range(range)
+            .withFix(AlmasixUnknownSymbolQuickFix(hit.kind, hit.name))
             .create()
     }
 

@@ -3,32 +3,14 @@ package com.almasix.ide
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.intellij.execution.configurations.GeneralCommandLine
-import com.intellij.execution.process.ProcessOutput
-import com.intellij.execution.util.ExecUtil
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.concurrent.TimeUnit
 
 /**
- * Runs `smith ide:index --json` (or `python -m almasix.ide.index`) and parses the dump.
+ * Parses `smith ide:index --json` dumps and builds the index command line.
+ * Process spawning lives in [AlmasixIndexProcess].
  */
 object AlmasixIndexLoader {
-    fun load(root: Path): AlmasixIndex {
-        val cmd = buildIndexCommand(root)
-        cmd.withWorkDirectory(root.toFile())
-        val output: ProcessOutput = ExecUtil.execAndGetOutput(cmd, TimeUnit.SECONDS.toMillis(60).toInt())
-        if (output.exitCode != 0 && output.stdout.isBlank()) {
-            return AlmasixIndex.empty(
-                error = "ide:index failed (exit ${output.exitCode}): ${output.stderr.take(500)}",
-            )
-        }
-        val text = output.stdout.trim()
-        if (text.isEmpty()) {
-            return AlmasixIndex.empty(error = "ide:index produced no output: ${output.stderr.take(500)}")
-        }
-        return parse(text)
-    }
-
     fun parse(json: String): AlmasixIndex {
         val root = JsonParser.parseString(json).asJsonObject
         val routes = mutableMapOf<String, AlmasixIndex.RouteEntry>()
@@ -57,6 +39,7 @@ object AlmasixIndexLoader {
                 detail = stringOrEmpty(obj, "detail"),
                 path = stringOrNull(obj, "path"),
                 line = obj.get("line")?.asInt ?: 0,
+                model = stringOrNull(obj, "model"),
             )
         }
         val modelMetadata = mutableMapOf<String, AlmasixIndex.ModelEntry>()
@@ -72,6 +55,8 @@ object AlmasixIndexLoader {
             }
             modelMetadata[name] = AlmasixIndex.ModelEntry(
                 fillable = obj.getAsJsonArray("fillable")?.map { it.asString } ?: emptyList(),
+                guarded = obj.getAsJsonArray("guarded")?.map { it.asString } ?: emptyList(),
+                hidden = obj.getAsJsonArray("hidden")?.map { it.asString } ?: emptyList(),
                 casts = casts,
                 relations = rels,
                 relationLines = relationLines,
