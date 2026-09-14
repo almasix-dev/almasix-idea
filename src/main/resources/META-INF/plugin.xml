@@ -3,21 +3,21 @@
   <name>Almasix</name>
   <vendor url="https://github.com/almasix-dev/ide-support">Almasix</vendor>
   <description><![CDATA[
-    <p>Almasix editor support for PyCharm / IntelliJ:</p>
+    <p><b>Almasix Idea</b> — native JetBrains support for Almasix:</p>
     <ul>
       <li>Prism (<code>.prism.html</code>) — HTML/CSS colors with Prism overlays</li>
-      <li>LSP-first intelligence via <code>almasix-lsp</code> (LSP4IJ)</li>
+      <li>Deep completions + unknown-symbol annotations (routes, views, config,
+          translations, gates, validation, Articulate relations, components, …)</li>
+      <li>Symbol index via <code>smith ide:index --json</code> (no LSP4IJ)</li>
       <li>Smith run configuration templates</li>
     </ul>
     <p>Install from the JetBrains Marketplace, or sideload a zip from
     <a href="https://github.com/almasix-dev/ide-support/releases">GitHub Releases</a>.</p>
-    <p><b>Note:</b> installing, updating, or removing this plugin requires an IDE restart
-    (custom language + template PSI + LSP cannot unload cleanly in-place).</p>
+    <p><b>Note:</b> installing, updating, or removing this plugin requires an IDE restart.</p>
   ]]></description>
 
   <depends>com.intellij.modules.platform</depends>
   <depends>com.intellij.modules.xml</depends>
-  <depends>com.redhat.devtools.lsp4ij</depends>
 
   <extensions defaultExtensionNs="com.intellij">
     <fileType
@@ -41,27 +41,27 @@
     <lang.braceMatcher language="Prism" implementationClass="com.almasix.ide.PrismBraceMatcher"/>
 
     <configurationType implementation="com.almasix.ide.SmithConfigurationType"/>
+
+    <completion.contributor language="any" implementationClass="com.almasix.ide.AlmasixCompletionContributor"/>
+    <annotator language="any" implementationClass="com.almasix.ide.AlmasixAnnotator"/>
   </extensions>
+
+  <actions>
+    <group id="Almasix.Menu" text="Almasix" description="Almasix Idea" popup="false">
+      <add-to-group group-id="ToolsMenu" anchor="last"/>
+      <action id="Almasix.RebuildIndex"
+              class="com.almasix.ide.RebuildIndexAction"
+              text="Rebuild Index"
+              description="Rebuild the Almasix symbol index (smith ide:index --json)"/>
+    </group>
+  </actions>
 
   <applicationListeners>
     <listener
         class="com.almasix.ide.AlmasixPluginListener"
         topic="com.intellij.ide.plugins.DynamicPluginListener"/>
+    <listener
+        class="com.almasix.ide.AlmasixIndexWatcher"
+        topic="com.intellij.openapi.project.ProjectManagerListener"/>
   </applicationListeners>
-
-  <extensions defaultExtensionNs="com.redhat.devtools.lsp4ij">
-    <server
-        id="almasixLsp"
-        name="Almasix Language Server"
-        factoryClass="com.almasix.ide.AlmasixLanguageServerFactory">
-      <description><![CDATA[
-        Boots almasix-lsp from the project virtualenv for Prism and Python.
-      ]]></description>
-    </server>
-    <languageMapping language="Prism" serverId="almasixLsp" languageId="prism-html"/>
-    <languageMapping language="Python" serverId="almasixLsp"/>
-    <fileNamePatternMapping patterns="*.prism.html" serverId="almasixLsp" languageId="prism-html"/>
-    <fileNamePatternMapping patterns=".env" serverId="almasixLsp" languageId="dotenv"/>
-    <fileNamePatternMapping patterns=".env.*" serverId="almasixLsp" languageId="dotenv"/>
-  </extensions>
 </idea-plugin>

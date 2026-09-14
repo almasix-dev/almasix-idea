@@ -1,62 +1,40 @@
 # Almasix for JetBrains (PyCharm / IntelliJ)
 
-LSP-first plugin shell: Prism file type with **native** syntax highlighting,
-Smith run configurations, and **almasix-lsp** via
-[LSP4IJ](https://github.com/redhat-developer/lsp4ij).
+**Almasix Idea** — native JetBrains plugin (Laravel Idea analogue):
+
+- Prism file type with **native** HTML + Prism highlighting
+- Deep completions + unknown-symbol annotations driven by
+  `smith ide:index --json`
+- Smith run configurations
+- **Almasix → Rebuild Index**
+
+Does **not** use LSP4IJ / `almasix-lsp` (that path is for VS Code).
 
 ## Install
 
 1. Install **Almasix** from the JetBrains Marketplace (id `com.almasix.ide`),
    **or** **Settings → Plugins → ⚙ → Install Plugin from Disk…** with a zip from
-   [GitHub Releases](https://github.com/almasix-dev/ide-support/releases).
+   [GitHub Releases](https://github.com/almasix-dev/ide-support/releases)
+   (**0.2.0+**).
 2. Restart when prompted.
 3. Open an Almasix app (folder with `bootstrap/app.py`). Ensure the **project
-   interpreter** (or a `.venv` beside that app) has the language server:
+   interpreter** (or a `.venv` beside that app) has Almasix installed:
 
    ```bash
-   pip install 'almasix[lsp]'
+   pip install almasix
    # confirm:
-   python -m almasix.lsp --help   # or: which almasix-lsp
+   smith ide:index --json | head
    ```
 
-4. LSP4IJ starts `almasix-lsp` by resolving, in order:
-   - the IDE project Python interpreter → `python -m almasix.lsp`
-   - `.venv` / `venv` next to `bootstrap/app.py`
-   - `.venv` / `venv` at the project root
-   - `almasix-lsp` on `PATH`
-
-   Prism (`.prism.html`) and Python files are mapped.
-
-### Troubleshooting ``Cannot start server … almasixLsp (pid=null)``
-
-That message means the IDE never spawned a process. Usual causes:
-
-1. **Wrong folder open** — open the app root (has `bootstrap/app.py`), not a
-   parent monorepo folder without a usable venv.
-2. **Missing extra** — `pip install 'almasix[lsp]'` into the interpreter
-   PyCharm shows under **Settings → Project → Python Interpreter**.
-3. **LSP4IJ missing** — the Almasix plugin depends on
-   [LSP4IJ](https://plugins.jetbrains.com/plugin/23257-lsp4ij); install it and
-   restart.
-### Windows IDE + WSL project
-
-If PyCharm runs on **Windows** and the project is under `\\wsl$\…` /
-`\\wsl.localhost\…`, a Linux `almasix-lsp` / `.venv/bin/python` cannot be
-started as a Win32 process (`pid=null`). Plugin **0.1.13+** wraps the command
-as `wsl.exe -d <distro> --cd <app> -- …` so pipx or the WSL venv works.
-
-Still required inside that distro:
-
-```bash
-pip install 'almasix[lsp]'   # or pipx install 'almasix[lsp]'
-```
+4. The plugin rebuilds the index on project open and when routes/config/views/
+   models change. Use **Almasix → Rebuild Index** to force a refresh.
 
 ## Develop
 
 ```bash
 cd jetbrains
 ./gradlew test buildPlugin
-# → build/distributions/almasix-jetbrains-*.zip
+# → build/distributions/almasix-*.zip
 ```
 
 Requires JDK 17+. Version is `pluginVersion` in `gradle.properties`.
