@@ -64,6 +64,7 @@ intellijPlatform {
         changeNotes.set(
             """
             <ul>
+              <li>0.1.12 — Resolve almasix-lsp from the project Python SDK + bootstrap/.venv (fix pid=null starts)</li>
               <li>0.1.11 — Fix {{ }} auto-close (no triple }}); route() completion keeps echo braces</li>
               <li>0.1.10 — require restart on uninstall (fix unload hang); @if snippets + route('') completions</li>
               <li>0.1.9 — LSP maps .env files; env-key + table/column completions via almasix-lsp</li>
