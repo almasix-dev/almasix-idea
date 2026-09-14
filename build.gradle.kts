@@ -25,7 +25,9 @@ dependencies {
             providers.gradleProperty("platformType"),
             providers.gradleProperty("platformVersion"),
         )
-        bundledPlugin("com.intellij.java")
+        // Bundled with PyCharm Community — keeps the sandbox aligned with a
+        // supported product (see plugin.xml incompatible-with list).
+        bundledPlugin("PythonCore")
         instrumentationTools()
         testFramework(TestFrameworkType.Platform)
     }
@@ -58,12 +60,16 @@ intellijPlatform {
             """
             Almasix Idea — native Prism highlighting, deep completions and
             annotations via smith ide:index --json, and Smith run configs.
+            Supports PyCharm Professional, PyCharm Community, and WebStorm.
             Install from the JetBrains Marketplace or sideload a release zip.
             """.trimIndent(),
         )
         changeNotes.set(
             """
             <ul>
+              <li>0.3.2 — Limit compatibility to <b>PyCharm Professional</b>,
+                  <b>PyCharm Community</b>, and <b>WebStorm</b> (product-module
+                  <code>incompatible-with</code> declarations).</li>
               <li>0.3.1 — Ctrl-hover underline/hand cursor on Almasix symbols; suppress
                   Blueprint <code>table.</code> column dumps; Prism file icon from
                   <code>art/prism/prism-file.svg</code>; New… runs <code>smith make:*</code>
