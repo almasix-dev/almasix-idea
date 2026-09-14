@@ -50,13 +50,18 @@
   <actions>
     <!-- popup=true so Tools gets a real "Almasix" submenu (false inlined
          children and made the group easy to miss). -->
-    <group id="Almasix.Menu" text="Almasix" description="Almasix Idea" popup="true">
+    <group id="Almasix.Menu"
+           text="Almasix"
+           description="Almasix Idea"
+           icon="/icons/almasix.svg"
+           popup="true">
       <add-to-group group-id="MainMenu" anchor="before" relative-to-action="HelpMenu"/>
       <add-to-group group-id="ToolsMenu" anchor="last"/>
       <action id="Almasix.RebuildIndex"
               class="com.almasix.ide.RebuildIndexAction"
               text="Rebuild Index"
-              description="Rebuild the Almasix symbol index (smith ide:index --json)"/>
+              description="Rebuild the Almasix symbol index (smith ide:index --json)"
+              icon="/icons/almasix.svg"/>
     </group>
   </actions>
 
