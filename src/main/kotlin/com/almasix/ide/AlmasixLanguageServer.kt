@@ -20,20 +20,25 @@ import java.nio.file.Path
  * 2. ``.venv`` / ``venv`` next to ``bootstrap/app.py`` (walk up from project dir)
  * 3. ``.venv`` / ``venv`` at the project root
  * 4. ``almasix-lsp`` on ``PATH`` (last resort)
+ *
+ * When the IDE is Windows and the project (or interpreter) lives under
+ * ``\\wsl$`` / ``\\wsl.localhost\``, the command is wrapped with ``wsl.exe``
+ * so Linux binaries are not spawned as Win32 processes (the common
+ * ``pid=null`` failure).
  */
 class AlmasixLanguageServer(project: Project) : OSProcessStreamConnectionProvider() {
     init {
         val projectRoot = project.guessProjectDir()?.toNioPath()
         val appRoot = findAppRoot(projectRoot)
         val workDir = appRoot ?: projectRoot
-        val command = resolveCommand(project, projectRoot, appRoot)
+        val rawCommand = resolveCommand(project, projectRoot, appRoot)
+        val command = wrapForWslHost(rawCommand, workDir)
         LOG.info("Starting almasixLsp with command=$command workDir=$workDir")
         val cli = GeneralCommandLine(command)
-        if (workDir != null) {
+        // For WSL-wrapped commands, ``--cd`` sets the Linux cwd; a Windows UNC
+        // working directory confuses CreateProcess.
+        if (workDir != null && !isWslWrapped(command)) {
             cli.setWorkDirectory(workDir.toFile())
-        }
-        // Ensure relative imports / dotenv discovery see the app root.
-        if (workDir != null) {
             cli.withEnvironment("PWD", workDir.toString())
         }
         setCommandLine(cli)
@@ -41,6 +46,11 @@ class AlmasixLanguageServer(project: Project) : OSProcessStreamConnectionProvide
 
     companion object {
         private val LOG = logger<AlmasixLanguageServer>()
+
+        private val WSL_UNC = Regex(
+            """^\\\\(wsl\$|wsl\.localhost)\\([^\\]+)\\?(.*)$""",
+            RegexOption.IGNORE_CASE,
+        )
 
         fun findAppRoot(start: Path?): Path? {
             var cur = start
@@ -68,6 +78,49 @@ class AlmasixLanguageServer(project: Project) : OSProcessStreamConnectionProvide
             }
             return listOf("almasix-lsp")
         }
+
+        /**
+         * If any path in the command (or the work dir) is a WSL UNC path, rewrite
+         * the argv to ``wsl.exe -d <distro> [--cd <linux>] -- <linux-args…>``.
+         */
+        fun wrapForWslHost(command: List<String>, workDir: Path?): List<String> {
+            val work = workDir?.let { parseWslUnc(it.toString()) }
+            val mapped = command.map { arg ->
+                val hit = parseWslUnc(arg)
+                if (hit != null) hit.linuxPath to hit else arg to null
+            }
+            val distro = mapped.firstNotNullOfOrNull { it.second?.distro } ?: work?.distro
+                ?: return command
+            val linuxArgs = mapped.map { (rewritten, hit) ->
+                if (hit != null) rewritten else {
+                    // Bare ``almasix-lsp`` / ``python`` stay as-is — resolved inside WSL PATH.
+                    rewritten
+                }
+            }
+            val out = mutableListOf("wsl.exe", "-d", distro)
+            val cd = work?.linuxPath
+            if (!cd.isNullOrBlank()) {
+                out.add("--cd")
+                out.add(cd)
+            }
+            out.add("--")
+            out.addAll(linuxArgs)
+            return out
+        }
+
+        fun isWslWrapped(command: List<String>): Boolean =
+            command.firstOrNull()?.equals("wsl.exe", ignoreCase = true) == true
+
+        fun parseWslUnc(path: String): WslUnc? {
+            val normalized = path.replace('/', '\\').trimEnd('\\')
+            val match = WSL_UNC.matchEntire(normalized) ?: return null
+            val distro = match.groupValues[2]
+            val rest = match.groupValues[3].replace('\\', '/').trim('/')
+            val linux = if (rest.isEmpty()) "/" else "/$rest"
+            return WslUnc(distro = distro, linuxPath = linux)
+        }
+
+        data class WslUnc(val distro: String, val linuxPath: String)
 
         private fun resolveFromSdk(project: Project): List<String>? {
             val home = try {
@@ -117,7 +170,6 @@ class AlmasixLanguageServer(project: Project) : OSProcessStreamConnectionProvide
                 )
                 return candidates.firstOrNull { isRunnable(it) && isPythonExecutable(it) }
             }
-            // Sdk home sometimes points at …/bin (directory of binaries).
             val sibling = homeOrBin.resolve("python")
             if (isRunnable(sibling) && isPythonExecutable(sibling)) {
                 return sibling
@@ -134,7 +186,6 @@ class AlmasixLanguageServer(project: Project) : OSProcessStreamConnectionProvide
                 name.startsWith("python3.")
         }
 
-        /** Prefer regular-file checks: ``isExecutable`` is unreliable on some mounts. */
         private fun isRunnable(path: Path): Boolean {
             if (!Files.isRegularFile(path)) return false
             return try {
@@ -146,10 +197,6 @@ class AlmasixLanguageServer(project: Project) : OSProcessStreamConnectionProvide
     }
 }
 
-/**
- * Project-scoped lifecycle: stop the language server when the project closes
- * so an orphan ``almasix-lsp`` process cannot outlive the IDE session.
- */
 @Service(Service.Level.PROJECT)
 class AlmasixLspLifecycle(private val project: Project) : Disposable {
     override fun dispose() {

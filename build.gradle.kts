@@ -64,6 +64,7 @@ intellijPlatform {
         changeNotes.set(
             """
             <ul>
+              <li>0.1.13 — Windows IDE + WSL projects: spawn almasix-lsp via wsl.exe (fixes pid=null)</li>
               <li>0.1.12 — Resolve almasix-lsp from the project Python SDK + bootstrap/.venv (fix pid=null starts)</li>
               <li>0.1.11 — Fix {{ }} auto-close (no triple }}); route() completion keeps echo braces</li>
               <li>0.1.10 — require restart on uninstall (fix unload hang); @if snippets + route('') completions</li>

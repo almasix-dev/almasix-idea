@@ -38,8 +38,18 @@ That message means the IDE never spawned a process. Usual causes:
 3. **LSP4IJ missing** — the Almasix plugin depends on
    [LSP4IJ](https://plugins.jetbrains.com/plugin/23257-lsp4ij); install it and
    restart.
-4. Check **Language Servers** tool window → Almasix → Log for the resolved
-   command after 0.1.12+.
+### Windows IDE + WSL project
+
+If PyCharm runs on **Windows** and the project is under `\\wsl$\…` /
+`\\wsl.localhost\…`, a Linux `almasix-lsp` / `.venv/bin/python` cannot be
+started as a Win32 process (`pid=null`). Plugin **0.1.13+** wraps the command
+as `wsl.exe -d <distro> --cd <app> -- …` so pipx or the WSL venv works.
+
+Still required inside that distro:
+
+```bash
+pip install 'almasix[lsp]'   # or pipx install 'almasix[lsp]'
+```
 
 ## Develop
 
