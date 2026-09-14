@@ -38,12 +38,12 @@ class AlmasixCompletionContributor : CompletionContributor() {
                     val document = parameters.editor.document
                     val offset = parameters.offset
                     val before = document.text.substring(0, offset.coerceAtMost(document.textLength))
-                    val site = CallSiteDetector.detect(before) ?: run {
+                    val site = CallSiteDetector.detect(before, dotenvFile = isEnv) ?: run {
                         if (isPrism && before.trimEnd().endsWith("@").not()) {
                             // Ctrl+Space in markup: directives + template globals
                             val prefix = result.prefixMatcher.prefix
                             addAll(result, index.directives, "directive", prefix)
-                            addAll(result, index.viewHelpers + index.viewShared, "helper", prefix)
+                            addAll(result, index.templateVarNames(), "helper", prefix)
                         }
                         return
                     }
@@ -75,7 +75,13 @@ class AlmasixCompletionContributor : CompletionContributor() {
                 SymbolKind.CONFIG -> index.configKeys.map { it to "config" }
                 SymbolKind.TRANSLATION -> index.translationKeys.map { it to "trans" }
                 SymbolKind.MIDDLEWARE -> index.middlewareAliases.map { it to "middleware" }
-                SymbolKind.ENV -> index.envKeys.keys.map { it to "env" }
+                SymbolKind.ENV -> index.envKeys.map { (n, e) ->
+                    n to (e.detail.ifBlank { "env" })
+                }
+                SymbolKind.ENV_VALUE -> {
+                    val key = site.receiver ?: return emptyList()
+                    index.optionsForEnvKey(key).map { it to "$key option" }
+                }
                 SymbolKind.TABLE -> index.tables.map { (n, t) -> n to (t.detail.ifBlank { "table" }) }
                 SymbolKind.COLUMN -> {
                     val cols = columnsFor(index, site.receiver)
@@ -98,8 +104,7 @@ class AlmasixCompletionContributor : CompletionContributor() {
                 SymbolKind.VITE -> (index.viteEntries.keys + index.views.keys).map { it to "asset" }
                 SymbolKind.DIRECTIVE -> index.directives.map { it to "directive" }
                 SymbolKind.TEMPLATE_VAR -> {
-                    val vars = index.viewHelpers + index.viewShared +
-                        index.viewData.values.flatten()
+                    val vars = index.templateVarNames()
                     vars.map { it to "var" }
                 }
                 SymbolKind.CONTROLLER_ACTION -> {

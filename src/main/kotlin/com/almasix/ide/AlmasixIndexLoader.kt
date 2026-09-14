@@ -66,10 +66,15 @@ object AlmasixIndexLoader {
             val rels = obj.getAsJsonArray("relations")?.map { it.asString } ?: emptyList()
             val casts = mutableMapOf<String, String>()
             obj.getAsJsonObject("casts")?.entrySet()?.forEach { (k, v) -> casts[k] = v.asString }
+            val relationLines = mutableMapOf<String, Int>()
+            obj.getAsJsonObject("relation_lines")?.entrySet()?.forEach { (k, v) ->
+                relationLines[k] = v.asInt
+            }
             modelMetadata[name] = AlmasixIndex.ModelEntry(
                 fillable = obj.getAsJsonArray("fillable")?.map { it.asString } ?: emptyList(),
                 casts = casts,
                 relations = rels,
+                relationLines = relationLines,
                 module = stringOrEmpty(obj, "module"),
                 path = stringOrEmpty(obj, "path"),
             )
@@ -79,9 +84,30 @@ object AlmasixIndexLoader {
             relations[name] = value.asJsonArray.map { it.asString }
         }
 
-        val viewData = mutableMapOf<String, Set<String>>()
+        val viewData = mutableMapOf<String, Map<String, AlmasixIndex.ViewVarEntry>>()
         root.getAsJsonObject("view_data")?.entrySet()?.forEach { (view, value) ->
-            viewData[view] = value.asJsonObject.keySet()
+            val vars = mutableMapOf<String, AlmasixIndex.ViewVarEntry>()
+            value.asJsonObject.entrySet().forEach { (varName, varVal) ->
+                vars[varName] = viewVarEntry(varVal.asJsonObject)
+            }
+            viewData[view] = vars
+        }
+
+        val viewHelpers = mutableMapOf<String, AlmasixIndex.ViewVarEntry>()
+        root.getAsJsonArray("view_helpers")?.forEach { el ->
+            if (!el.isJsonObject) return@forEach
+            val obj = el.asJsonObject
+            val name = obj.get("name")?.asString ?: return@forEach
+            viewHelpers[name] = viewVarEntry(obj)
+        }
+
+        val viewShared = mutableMapOf<String, AlmasixIndex.ViewVarEntry>()
+        root.getAsJsonObject("view_shared")?.entrySet()?.forEach { (name, value) ->
+            if (value.isJsonObject) {
+                viewShared[name] = viewVarEntry(value.asJsonObject)
+            } else {
+                viewShared[name] = AlmasixIndex.ViewVarEntry(kind = "shared")
+            }
         }
 
         val controllerActions = mutableMapOf<String, List<String>>()
@@ -89,10 +115,31 @@ object AlmasixIndexLoader {
             controllerActions[name] = value.asJsonArray.map { it.asString }
         }
 
-        val envKeys = mutableMapOf<String, AlmasixIndex.Located>()
+        val envKeys = mutableMapOf<String, AlmasixIndex.EnvEntry>()
         root.getAsJsonObject("env_keys")?.entrySet()?.forEach { (name, value) ->
             val obj = value.asJsonObject
-            envKeys[name] = AlmasixIndex.Located(
+            val usedBy = obj.getAsJsonArray("used_by")?.map { it.asString } ?: emptyList()
+            envKeys[name] = AlmasixIndex.EnvEntry(
+                path = stringOrNull(obj, "path"),
+                line = obj.get("line")?.asInt ?: 0,
+                kind = stringOrEmpty(obj, "kind"),
+                detail = stringOrEmpty(obj, "detail"),
+                usedBy = usedBy,
+            )
+        }
+
+        val envOptions = mutableMapOf<String, List<String>>()
+        root.getAsJsonObject("env_options")?.entrySet()?.forEach { (name, value) ->
+            envOptions[name] = when {
+                value.isJsonArray -> value.asJsonArray.map { it.asString }
+                else -> emptyList()
+            }
+        }
+
+        val configLocations = mutableMapOf<String, AlmasixIndex.Located>()
+        root.getAsJsonObject("config_locations")?.entrySet()?.forEach { (name, value) ->
+            val obj = value.asJsonObject
+            configLocations[name] = AlmasixIndex.Located(
                 path = stringOrNull(obj, "path"),
                 line = obj.get("line")?.asInt ?: 0,
             )
@@ -106,9 +153,11 @@ object AlmasixIndexLoader {
             routes = routes,
             configKeys = stringList(root, "config_keys"),
             configFiles = stringMap(root, "config_files"),
+            configLocations = configLocations,
             translationKeys = stringList(root, "translation_keys"),
             middlewareAliases = stringList(root, "middleware_aliases"),
             envKeys = envKeys,
+            envOptions = envOptions,
             tables = tables,
             modelMetadata = modelMetadata,
             relations = relations,
@@ -123,8 +172,8 @@ object AlmasixIndexLoader {
             smithCommands = stringList(root, "smith_commands"),
             validationRules = stringList(root, "validation_rules"),
             directives = stringList(root, "directives"),
-            viewHelpers = helperNames(root),
-            viewShared = stringKeys(root, "view_shared"),
+            viewHelpers = viewHelpers,
+            viewShared = viewShared,
             viewData = viewData,
             viteEntries = stringMap(root, "vite_entries"),
             controllerActions = controllerActions,
@@ -149,6 +198,13 @@ object AlmasixIndexLoader {
         }
     }
 
+    private fun viewVarEntry(obj: JsonObject): AlmasixIndex.ViewVarEntry =
+        AlmasixIndex.ViewVarEntry(
+            path = stringOrNull(obj, "path"),
+            line = obj.get("line")?.asInt ?: 0,
+            kind = stringOrEmpty(obj, "kind").ifBlank { "data" },
+        )
+
     private fun stringOrNull(obj: JsonObject, field: String): String? {
         val el = obj.get(field) ?: return null
         if (el.isJsonNull) return null
@@ -157,9 +213,6 @@ object AlmasixIndexLoader {
 
     private fun stringOrEmpty(obj: JsonObject, field: String): String =
         stringOrNull(obj, field) ?: ""
-
-    private fun stringKeys(root: JsonObject, field: String): Set<String> =
-        root.getAsJsonObject(field)?.keySet() ?: emptySet()
 
     private fun stringMap(root: JsonObject, field: String): Map<String, String> {
         val obj = root.getAsJsonObject(field) ?: return emptyMap()
@@ -175,12 +228,5 @@ object AlmasixIndexLoader {
             el.isJsonObject -> el.asJsonObject.keySet()
             else -> emptySet()
         }
-    }
-
-    private fun helperNames(root: JsonObject): Set<String> {
-        val arr = root.getAsJsonArray("view_helpers") ?: return emptySet()
-        return arr.mapNotNull { el ->
-            if (el.isJsonObject) el.asJsonObject.get("name")?.asString else null
-        }.toSet()
     }
 }

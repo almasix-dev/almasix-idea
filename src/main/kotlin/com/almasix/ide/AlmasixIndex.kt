@@ -15,9 +15,13 @@ data class AlmasixIndex(
     val configKeys: Set<String> = emptySet(),
     /** Config file stem (`app`) → absolute path. */
     val configFiles: Map<String, String> = emptyMap(),
+    /** Dotted config key → declaration location (`app.env` → line of `"env"`). */
+    val configLocations: Map<String, Located> = emptyMap(),
     val translationKeys: Set<String> = emptySet(),
     val middlewareAliases: Set<String> = emptySet(),
-    val envKeys: Map<String, Located> = emptyMap(),
+    val envKeys: Map<String, EnvEntry> = emptyMap(),
+    /** Suggested values for env keys (``QUEUE_CONNECTION`` → sync/redis/…). */
+    val envOptions: Map<String, List<String>> = emptyMap(),
     val tables: Map<String, TableEntry> = emptyMap(),
     val modelMetadata: Map<String, ModelEntry> = emptyMap(),
     val relations: Map<String, List<String>> = emptyMap(),
@@ -33,13 +37,27 @@ data class AlmasixIndex(
     val smithCommands: Set<String> = emptySet(),
     val validationRules: Set<String> = emptySet(),
     val directives: Set<String> = emptySet(),
-    val viewHelpers: Set<String> = emptySet(),
-    val viewShared: Set<String> = emptySet(),
-    val viewData: Map<String, Set<String>> = emptyMap(),
+    val viewHelpers: Map<String, ViewVarEntry> = emptyMap(),
+    val viewShared: Map<String, ViewVarEntry> = emptyMap(),
+    val viewData: Map<String, Map<String, ViewVarEntry>> = emptyMap(),
     val viteEntries: Map<String, String> = emptyMap(),
     val controllerActions: Map<String, List<String>> = emptyMap(),
 ) {
     data class Located(val path: String? = null, val line: Int = 0)
+
+    data class EnvEntry(
+        val path: String? = null,
+        val line: Int = 0,
+        val kind: String = "",
+        val detail: String = "",
+        val usedBy: List<String> = emptyList(),
+    )
+
+    data class ViewVarEntry(
+        val path: String? = null,
+        val line: Int = 0,
+        val kind: String = "data",
+    )
 
     data class RouteEntry(
         val uri: String,
@@ -59,6 +77,8 @@ data class AlmasixIndex(
         val fillable: List<String> = emptyList(),
         val casts: Map<String, String> = emptyMap(),
         val relations: List<String> = emptyList(),
+        /** Relation method name → 0-based line in the model file. */
+        val relationLines: Map<String, Int> = emptyMap(),
         val module: String = "",
         val path: String = "",
     )
@@ -70,6 +90,7 @@ data class AlmasixIndex(
         SymbolKind.TRANSLATION -> translationKeys.isNotEmpty() && translationKeys.contains(name)
         SymbolKind.MIDDLEWARE -> middlewareAliases.contains(name)
         SymbolKind.ENV -> envKeys.containsKey(name)
+        SymbolKind.ENV_VALUE -> true
         SymbolKind.TABLE -> tables.containsKey(name)
         SymbolKind.GATE -> gates.contains(name)
         SymbolKind.COMPONENT ->
@@ -86,7 +107,37 @@ data class AlmasixIndex(
         SymbolKind.SMITH -> smithCommands.contains(name)
         SymbolKind.VITE -> viteEntries.containsKey(name) || views.containsKey(name)
         SymbolKind.CAST -> casts.contains(name)
+        SymbolKind.TEMPLATE_VAR -> templateVarNames().contains(name.substringBefore('.'))
         else -> true
+    }
+
+    fun templateVarNames(): Set<String> =
+        viewHelpers.keys + viewShared.keys + viewData.values.flatMap { it.keys }.toSet()
+
+    fun optionsForEnvKey(key: String): List<String> {
+        envOptions[key]?.let { return it }
+        val aliases = mapOf(
+            "QUEUE_DRIVER" to "QUEUE_CONNECTION",
+            "QUEUE_CONNECTION" to "QUEUE_DRIVER",
+            "CACHE_DRIVER" to "CACHE_STORE",
+            "CACHE_STORE" to "CACHE_DRIVER",
+            "BROADCAST_DRIVER" to "BROADCAST_CONNECTION",
+            "BROADCAST_CONNECTION" to "BROADCAST_DRIVER",
+        )
+        val alt = aliases[key] ?: return emptyList()
+        return envOptions[alt] ?: emptyList()
+    }
+
+    fun viewNameForPath(absolutePath: String): String? {
+        if (absolutePath.isBlank()) return null
+        val normalized = absolutePath.replace('\\', '/')
+        views.entries.firstOrNull { (_, path) ->
+            path.replace('\\', '/') == normalized
+        }?.let { return it.key }
+        return views.entries.firstOrNull { (_, path) ->
+            normalized.endsWith(path.replace('\\', '/')) ||
+                path.replace('\\', '/').endsWith(normalized)
+        }?.key
     }
 
     companion object {
@@ -95,7 +146,7 @@ data class AlmasixIndex(
 }
 
 enum class SymbolKind {
-    ROUTE, VIEW, CONFIG, TRANSLATION, MIDDLEWARE, ENV, TABLE, COLUMN,
+    ROUTE, VIEW, CONFIG, TRANSLATION, MIDDLEWARE, ENV, ENV_VALUE, TABLE, COLUMN,
     RELATION, CAST, GATE, COMPONENT, VALIDATION, DISK, QUEUE, CACHE, MAILER,
     INERTIA, SMITH, VITE, DIRECTIVE, TEMPLATE_VAR, CONTROLLER_ACTION,
 }

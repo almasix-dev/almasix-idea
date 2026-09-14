@@ -61,6 +61,11 @@ intellijPlatform {
         changeNotes.set(
             """
             <ul>
+              <li>0.2.3 — Deeper navigation + env intelligence: config keys jump to the
+                  key line; Prism <code>{{ var }}</code> go-to-definition; Ctrl-hover
+                  underline on navigable symbols; two-way env completion (keys from
+                  config in <code>.env</code>, driver/store options like
+                  QUEUE_CONNECTION → sync/redis). Requires Almasix <b>0.9.1+</b>.</li>
               <li>0.2.2 — Ctrl-click / Go to Declaration for routes, views, config files,
                   env keys, components, tables/columns, and relations; official Almasix
                   icon on the Almasix menu</li>

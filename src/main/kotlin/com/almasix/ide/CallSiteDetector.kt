@@ -10,7 +10,7 @@ object CallSiteDetector {
     data class Site(
         val kind: SymbolKind,
         val prefix: String,
-        /** Model / table hint for columns / relations when known. */
+        /** Model / table hint for columns / relations when known; env key for ENV_VALUE. */
         val receiver: String? = null,
         /** True when completing a pipe-segment of a validation rule string. */
         val validationSegment: Boolean = false,
@@ -21,6 +21,10 @@ object CallSiteDetector {
         RegexOption.IGNORE_CASE,
     )
 
+    private val ENV_DEFAULT = Regex(
+        """\benv\s*\(\s*(['"])(?<key>[A-Za-z_][\w]*)\1\s*,\s*(?:(['"])(?<pre>[^'"]*)|(?<bare>[A-Za-z_][\w.]*)?)?\z""",
+    )
+
     private val DIRECTIVE_VIEW = Regex(
         """@(?:extends|include|includeIf|includeWhen|includeUnless|each|component|lang|choice|can|cannot|canany|cannotany|route|signedRoute|asset|vite)\s*\(\s*(?<q>['"])(?<pre>[^'"]*)\z""",
     )
@@ -29,7 +33,15 @@ object CallSiteDetector {
 
     private val COMPONENT_TAG = Regex("""<x-(?<pre>[\w./-]*)\z""")
 
-    private val DOTENV = Regex("""\$\{(?<pre>[A-Za-z_][\w]*)?\z""")
+    private val DOTENV_INTERPOLATION = Regex("""\$\{(?<pre>[A-Za-z_][\w]*)?\z""")
+
+    private val DOTENV_VALUE = Regex(
+        """^\s*(?:export\s+)?(?<key>[A-Za-z_][\w]*)\s*=\s*(?<pre>[^#]*)\z""",
+    )
+
+    private val DOTENV_KEY = Regex(
+        """^\s*(?:export\s+)?(?<pre>[A-Za-z_][\w]*)?\z""",
+    )
 
     private val VALIDATION = Regex(
         """(?<fn>validate|rules)\s*\([^)]*?(?:['"])(?<pre>[^'"]*)\z""",
@@ -48,12 +60,24 @@ object CallSiteDetector {
         """(?:Artisan::call|Smith\.call|call)\s*\(\s*(?<q>['"])(?<pre>[^'"]*)\z""",
     )
 
-    fun detect(beforeCaret: String): Site? {
+    /**
+     * @param dotenvFile when true, also match bare ``KEY`` / ``KEY=value`` lines
+     *   (only safe inside ``.env`` / ``.env.*`` files).
+     */
+    fun detect(beforeCaret: String, dotenvFile: Boolean = false): Site? {
+        if (dotenvFile) {
+            detectDotenvLine(beforeCaret.substringAfterLast('\n'))?.let { return it }
+        }
+
         val text = beforeCaret.replace('\n', ' ')
         val tail = if (text.length > 240) text.takeLast(240) else text
 
-        DOTENV.find(tail)?.let {
+        DOTENV_INTERPOLATION.find(tail)?.let {
             return Site(SymbolKind.ENV, it.groups["pre"]?.value ?: "")
+        }
+        ENV_DEFAULT.find(tail)?.let { m ->
+            val pre = m.groups["pre"]?.value ?: m.groups["bare"]?.value ?: ""
+            return Site(SymbolKind.ENV_VALUE, pre, receiver = m.groups["key"]?.value)
         }
         COMPONENT_TAG.find(tail)?.let {
             return Site(SymbolKind.COMPONENT, it.groups["pre"]?.value ?: "")
@@ -121,5 +145,37 @@ object CallSiteDetector {
             return Site(SymbolKind.TEMPLATE_VAR, it.groups["pre"]?.value ?: "")
         }
         return null
+    }
+
+    private fun detectDotenvLine(line: String): Site? {
+        if (line.lstrip().startsWith("#")) return null
+        DOTENV_INTERPOLATION.find(line)?.let {
+            return Site(SymbolKind.ENV, it.groups["pre"]?.value ?: "")
+        }
+        DOTENV_VALUE.matchEntire(line)?.let { m ->
+            val raw = m.groups["pre"]?.value ?: ""
+            return Site(
+                SymbolKind.ENV_VALUE,
+                stripDotenvValuePrefix(raw),
+                receiver = m.groups["key"]?.value,
+            )
+        }
+        DOTENV_KEY.matchEntire(line)?.let { m ->
+            return Site(SymbolKind.ENV, m.groups["pre"]?.value ?: "")
+        }
+        return null
+    }
+
+    private fun String.lstrip(): String = trimStart()
+
+    private fun stripDotenvValuePrefix(raw: String): String {
+        val text = raw.trimStart()
+        if (text.isEmpty()) return ""
+        if (text[0] == '"' || text[0] == '\'') {
+            val q = text[0]
+            if (text.length == 1) return ""
+            return if (text.last() == q) text.substring(1, text.length - 1) else text.substring(1)
+        }
+        return text
     }
 }

@@ -73,6 +73,58 @@ class CallSiteDetectorTest {
         val site = CallSiteDetector.detect("""env("APP_""")
         assertEquals(SymbolKind.ENV, site!!.kind)
     }
+
+    @Test
+    fun templateVarEcho() {
+        val site = CallSiteDetector.detect("""{{ tit""")
+        assertEquals(SymbolKind.TEMPLATE_VAR, site!!.kind)
+        assertEquals("tit", site.prefix)
+    }
+
+    @Test
+    fun dotenvBareKey() {
+        val site = CallSiteDetector.detect("QUEUE_CON", dotenvFile = true)
+        assertEquals(SymbolKind.ENV, site!!.kind)
+        assertEquals("QUEUE_CON", site.prefix)
+    }
+
+    @Test
+    fun dotenvValueOptions() {
+        val site = CallSiteDetector.detect("QUEUE_CONNECTION=re", dotenvFile = true)
+        assertEquals(SymbolKind.ENV_VALUE, site!!.kind)
+        assertEquals("QUEUE_CONNECTION", site.receiver)
+        assertEquals("re", site.prefix)
+    }
+
+    @Test
+    fun envDefaultSecondArg() {
+        val site = CallSiteDetector.detect("""env("QUEUE_CONNECTION", "sy""")
+        assertEquals(SymbolKind.ENV_VALUE, site!!.kind)
+        assertEquals("QUEUE_CONNECTION", site.receiver)
+        assertEquals("sy", site.prefix)
+    }
+}
+
+class AlmasixSymbolLocatorTest {
+    @Test
+    fun configLiteralHit() {
+        val text = """x = config("app.env")"""
+        val offset = text.indexOf("env") + 1
+        val hit = AlmasixSymbolLocator.hitAt(text, offset)
+        assertNotNull(hit)
+        assertEquals(SymbolKind.CONFIG, hit!!.kind)
+        assertEquals("app.env", hit.name)
+    }
+
+    @Test
+    fun templateVarHit() {
+        val text = """Hello {{ title }} world"""
+        val offset = text.indexOf("title") + 2
+        val hit = AlmasixSymbolLocator.hitAt(text, offset)
+        assertNotNull(hit)
+        assertEquals(SymbolKind.TEMPLATE_VAR, hit!!.kind)
+        assertEquals("title", hit.name)
+    }
 }
 
 class AlmasixIndexParseTest {
@@ -89,9 +141,26 @@ class AlmasixIndexParseTest {
               },
               "config_keys": ["app.name", "app.env"],
               "config_files": {"app": "/tmp/app/config/app.py"},
+              "config_locations": {
+                "app.env": {"path": "/tmp/app/config/app.py", "line": 17},
+                "app.name": {"path": "/tmp/app/config/app.py", "line": 16}
+              },
               "translation_keys": ["messages.hello"],
               "middleware_aliases": ["web", "auth"],
-              "env_keys": {"APP_KEY": {"name": "APP_KEY", "path": "/tmp/app/.env", "line": 3}},
+              "env_keys": {
+                "APP_KEY": {
+                  "name": "APP_KEY",
+                  "path": "/tmp/app/.env",
+                  "line": 3,
+                  "kind": "env",
+                  "detail": "Set in .env",
+                  "used_by": ["config/app.py:22"]
+                }
+              },
+              "env_options": {
+                "QUEUE_CONNECTION": ["database", "redis", "sync"],
+                "QUEUE_DRIVER": ["database", "redis", "sync"]
+              },
               "tables": {
                 "users": {
                   "name": "users",
@@ -110,7 +179,8 @@ class AlmasixIndexParseTest {
                   "path": "/tmp/app/app/models/user.py",
                   "fillable": ["email"],
                   "casts": {"id": "int"},
-                  "relations": ["posts"]
+                  "relations": ["posts"],
+                  "relation_lines": {"posts": 42}
                 }
               },
               "relations": {"User": ["posts"]},
@@ -125,9 +195,20 @@ class AlmasixIndexParseTest {
               "smith_commands": ["serve", "ide:index"],
               "validation_rules": ["required", "email"],
               "directives": ["if", "endif"],
-              "view_helpers": [{"name": "auth"}],
-              "view_shared": {},
-              "view_data": {"welcome": {"title": {"name": "title"}}},
+              "view_helpers": [{"name": "auth", "path": "/tmp/helpers.py", "line": 9, "kind": "helper"}],
+              "view_shared": {
+                "csrf_token": {"name": "csrf_token", "path": "/tmp/auth.py", "line": 5, "kind": "shared"}
+              },
+              "view_data": {
+                "welcome": {
+                  "title": {
+                    "name": "title",
+                    "kind": "data",
+                    "path": "/tmp/app/app/http/controllers/welcome_controller.py",
+                    "line": 22
+                  }
+                }
+              },
               "vite_entries": {"resources/js/app.js": "/tmp/app.js"},
               "controller_actions": {"WelcomeController": ["index"]}
             }
@@ -140,11 +221,14 @@ class AlmasixIndexParseTest {
         assertEquals(12, index.routes["home"]!!.line)
         assertTrue(index.configKeys.contains("app.name"))
         assertEquals("/tmp/app/config/app.py", index.configFiles["app"])
+        assertEquals(17, index.configLocations["app.env"]!!.line)
         assertTrue(index.tables["users"]!!.columns.containsKey("email"))
         assertEquals(listOf("posts"), index.relations["User"])
+        assertEquals(42, index.modelMetadata["User"]!!.relationLines["posts"])
         assertTrue(index.validationRules.contains("required"))
         assertTrue(index.known(SymbolKind.ROUTE, "home"))
         assertTrue(!index.known(SymbolKind.ROUTE, "missing"))
+        assertEquals("welcome", index.viewNameForPath("/tmp/app/resources/views/welcome.prism.html"))
 
         val site = CallSiteDetector.Site(SymbolKind.ROUTE, "ho")
         val items = AlmasixCompletionContributor.symbolsFor(index, site)
@@ -159,8 +243,8 @@ class AlmasixIndexParseTest {
             AlmasixSymbolResolver.resolve(index, SymbolKind.VIEW, "welcome"),
         )
         assertEquals(
-            AlmasixSymbolResolver.Target("/tmp/app/config/app.py", 0),
-            AlmasixSymbolResolver.resolve(index, SymbolKind.CONFIG, "app.name"),
+            AlmasixSymbolResolver.Target("/tmp/app/config/app.py", 17),
+            AlmasixSymbolResolver.resolve(index, SymbolKind.CONFIG, "app.env"),
         )
         assertEquals(
             AlmasixSymbolResolver.Target("/tmp/x", 0),
@@ -170,13 +254,51 @@ class AlmasixIndexParseTest {
             AlmasixSymbolResolver.Target("/tmp/app/.env", 3),
             AlmasixSymbolResolver.resolve(index, SymbolKind.ENV, "APP_KEY"),
         )
+        assertEquals(listOf("database", "redis", "sync"), index.optionsForEnvKey("QUEUE_CONNECTION"))
+        assertEquals(listOf("database", "redis", "sync"), index.optionsForEnvKey("QUEUE_DRIVER"))
+        val envSite = CallSiteDetector.Site(SymbolKind.ENV_VALUE, "re", receiver = "QUEUE_CONNECTION")
+        val envItems = AlmasixCompletionContributor.symbolsFor(index, envSite)
+        assertTrue(envItems.any { it.first == "redis" })
         assertEquals(
             AlmasixSymbolResolver.Target("/tmp/app/database/migrations/0001_users.py", 7),
             AlmasixSymbolResolver.resolveColumn(index, "users", "email"),
         )
         assertEquals(
-            AlmasixSymbolResolver.Target("/tmp/app/app/models/user.py", 0),
+            AlmasixSymbolResolver.Target("/tmp/app/app/models/user.py", 42),
             AlmasixSymbolResolver.resolve(index, SymbolKind.RELATION, "posts"),
         )
+        assertEquals(
+            AlmasixSymbolResolver.Target(
+                "/tmp/app/app/http/controllers/welcome_controller.py",
+                22,
+            ),
+            AlmasixSymbolResolver.resolve(
+                index,
+                SymbolKind.TEMPLATE_VAR,
+                "title",
+                viewName = "welcome",
+            ),
+        )
+        assertEquals(
+            AlmasixSymbolResolver.Target("/tmp/auth.py", 5),
+            AlmasixSymbolResolver.resolve(index, SymbolKind.TEMPLATE_VAR, "csrf_token"),
+        )
+    }
+
+    @Test
+    fun configFallbackScansFile() {
+        val dir = java.nio.file.Files.createTempDirectory("almasix-config")
+        val file = dir.resolve("app.py")
+        java.nio.file.Files.writeString(
+            file,
+            """
+            config = {
+                "name": "x",
+                "env": "local",
+            }
+            """.trimIndent(),
+        )
+        val line = AlmasixSymbolResolver.locateNestedKeyLine(file.toString(), listOf("env"))
+        assertEquals(2, line)
     }
 }

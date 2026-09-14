@@ -3,53 +3,69 @@ package com.almasix.ide
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 
 /**
- * Squiggles unknown Almasix string symbols (routes, views, config, …).
+ * Squiggles unknown Almasix symbols; highlights known navigable ones as references
+ * so Ctrl-hover shows the underline even before a soft PsiReference resolves.
  */
 class AlmasixAnnotator : Annotator {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         val file = element.containingFile ?: return
         val vFile = file.virtualFile ?: return
-        val name = vFile.name
-        val isPrism = name.endsWith(".prism.html") || file.language === PrismLanguage
-        val isPython = name.endsWith(".py")
-        if (!isPrism && !isPython) return
+        if (!AlmasixNavigation.isSupportedFile(vFile.name, file.language)) return
 
-        // Annotate only leaf-ish elements that look like string content, or whole file chunks.
         val text = element.text
-        if (text.length < 3 || text.length > 200) return
-        if (!(text.startsWith("\"") || text.startsWith("'"))) return
-        val literal = text.substring(1, text.length - 1)
-        if (literal.isEmpty() || literal.length > 120) return
+        if (text.length < 1 || text.length > 400) return
 
         val project = element.project
         val index = AlmasixProjectService.getInstance(project).index()
         if (!index.ok) return
 
         val document = file.viewProvider.document ?: return
+        val fileText = document.text
         val start = element.textRange.startOffset
-        if (start <= 0) return
-        val before = document.text.substring(0, start)
-        val site = CallSiteDetector.detect(before + text.first()) ?: return
-        // Re-detect with the string opened so prefix includes empty content end
-        val site2 = CallSiteDetector.detect(before + text.first() + literal) ?: site
+        val probe = (start + text.length / 2).coerceIn(0, fileText.length)
+        val hit = AlmasixSymbolLocator.hitAt(fileText, probe)
+            ?: AlmasixSymbolLocator.hitAt(fileText, start + if (text.startsWith("\"") || text.startsWith("'")) 1 else 0)
+            ?: return
 
-        val kind = site2.kind
-        if (kind !in ANNOTATED) return
-        if (kind == SymbolKind.TRANSLATION && index.translationKeys.isEmpty()) return
-        if (kind == SymbolKind.GATE && index.gates.isEmpty()) return
+        if (hit.range.endOffset <= start || hit.range.startOffset >= element.textRange.endOffset) return
 
-        val value = when (kind) {
-            SymbolKind.VALIDATION -> literal.substringBefore(":").substringBefore("|")
-            else -> literal
+        val viewName = index.viewNameForPath(vFile.path)
+        val resolvable = AlmasixSymbolResolver.resolve(
+            index,
+            hit.kind,
+            hit.name,
+            receiver = hit.receiver,
+            viewName = viewName,
+        ) != null
+
+        val range = TextRange(
+            hit.range.startOffset.coerceAtLeast(start),
+            hit.range.endOffset.coerceAtMost(element.textRange.endOffset),
+        )
+        if (range.startOffset >= range.endOffset) return
+
+        if (resolvable) {
+            holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
+                .range(range)
+                .textAttributes(DefaultLanguageHighlighterColors.HIGHLIGHTED_REFERENCE)
+                .create()
+            return
         }
-        if (index.known(kind, value)) return
 
-        val range = TextRange(element.textRange.startOffset + 1, element.textRange.endOffset - 1)
-        holder.newAnnotation(HighlightSeverity.WARNING, "Unknown Almasix ${kind.name.lowercase()}: $value")
+        if (hit.kind !in ANNOTATED) return
+        if (hit.kind == SymbolKind.TRANSLATION && index.translationKeys.isEmpty()) return
+        if (hit.kind == SymbolKind.GATE && index.gates.isEmpty()) return
+        if (index.known(hit.kind, hit.name)) return
+
+        holder.newAnnotation(
+            HighlightSeverity.WARNING,
+            "Unknown Almasix ${hit.kind.name.lowercase()}: ${hit.name}",
+        )
             .range(range)
             .create()
     }
@@ -65,6 +81,8 @@ class AlmasixAnnotator : Annotator {
             SymbolKind.MIDDLEWARE,
             SymbolKind.DISK,
             SymbolKind.INERTIA,
+            SymbolKind.ENV,
+            SymbolKind.TEMPLATE_VAR,
         )
     }
 }
