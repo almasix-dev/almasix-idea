@@ -2,25 +2,25 @@ package com.almasix.ide
 
 import com.intellij.codeInsight.daemon.EmptyResolveMessageProvider
 import com.intellij.openapi.util.TextRange
+import com.intellij.patterns.PlatformPatterns
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
 import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.PsiReferenceContributor
 import com.intellij.psi.PsiReferenceProvider
 import com.intellij.psi.PsiReferenceRegistrar
-import com.intellij.psi.impl.source.tree.LeafPsiElement
-import com.intellij.patterns.PlatformPatterns
 import com.intellij.util.ProcessingContext
 
 /**
- * Soft references so Ctrl-hover underlines Almasix symbols and the hand cursor appears.
+ * Hard (non-soft) references so Ctrl-hover underlines Almasix symbols and shows
+ * the hand cursor the same way native Python go-to links do.
  */
 class AlmasixReferenceContributor : PsiReferenceContributor() {
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
         registrar.registerReferenceProvider(
-            PlatformPatterns.psiElement(LeafPsiElement::class.java),
+            PlatformPatterns.psiElement(),
             AlmasixReferenceProvider(),
-            PsiReferenceRegistrar.LOWER_PRIORITY,
+            PsiReferenceRegistrar.HIGHER_PRIORITY,
         )
     }
 }
@@ -36,7 +36,7 @@ class AlmasixReferenceProvider : PsiReferenceProvider() {
             return PsiReference.EMPTY_ARRAY
         }
         val text = element.text
-        if (text.length > 400) return PsiReference.EMPTY_ARRAY
+        if (text.isEmpty() || text.length > 800) return PsiReference.EMPTY_ARRAY
 
         val index = AlmasixProjectService.getInstance(element.project).index()
         if (!index.ok) return PsiReference.EMPTY_ARRAY
@@ -44,18 +44,20 @@ class AlmasixReferenceProvider : PsiReferenceProvider() {
         val document = file.viewProvider.document ?: return PsiReference.EMPTY_ARRAY
         val fileText = document.text
         val elementStart = element.textRange.startOffset
+        val elementEnd = element.textRange.endOffset
 
-        val probeOffset = (elementStart + element.textLength / 2).coerceIn(0, fileText.length)
-        val hit = AlmasixSymbolLocator.hitAt(fileText, probeOffset)
-            ?: AlmasixSymbolLocator.hitAt(fileText, elementStart + 1)
+        // Prefer a probe inside the element; also try just after an opening quote.
+        val probes = listOf(
+            (elementStart + element.textLength / 2).coerceIn(0, fileText.length),
+            (elementStart + 1).coerceIn(0, fileText.length),
+            elementStart.coerceIn(0, fileText.length),
+        )
+        val hit = probes.firstNotNullOfOrNull { AlmasixSymbolLocator.hitAt(fileText, it) }
             ?: return PsiReference.EMPTY_ARRAY
 
-        if (hit.range.endOffset <= elementStart || hit.range.startOffset >= element.textRange.endOffset) {
+        if (hit.range.endOffset <= elementStart || hit.range.startOffset >= elementEnd) {
             return PsiReference.EMPTY_ARRAY
         }
-        val relStart = (hit.range.startOffset - elementStart).coerceAtLeast(0)
-        val relEnd = (hit.range.endOffset - elementStart).coerceAtMost(element.textLength)
-        if (relStart >= relEnd) return PsiReference.EMPTY_ARRAY
 
         val viewName = index.viewNameForPath(vFile.path)
         val target = AlmasixSymbolResolver.resolve(
@@ -65,6 +67,23 @@ class AlmasixReferenceProvider : PsiReferenceProvider() {
             receiver = hit.receiver,
             viewName = viewName,
         ) ?: return PsiReference.EMPTY_ARRAY
+
+        // Attach the reference to the innermost element that fully covers the hit
+        // so the underline sits on the symbol text, not a giant parent.
+        if (element.textRange.startOffset < hit.range.startOffset ||
+            element.textRange.endOffset > hit.range.endOffset
+        ) {
+            // Parent nodes also get visited — skip if a smaller child will claim it.
+            val childClaims = element.children.any { child ->
+                child.textRange.startOffset <= hit.range.startOffset &&
+                    child.textRange.endOffset >= hit.range.endOffset
+            }
+            if (childClaims) return PsiReference.EMPTY_ARRAY
+        }
+
+        val relStart = (hit.range.startOffset - elementStart).coerceAtLeast(0)
+        val relEnd = (hit.range.endOffset - elementStart).coerceAtMost(element.textLength)
+        if (relStart >= relEnd) return PsiReference.EMPTY_ARRAY
 
         return arrayOf(
             AlmasixSymbolReference(
@@ -84,7 +103,7 @@ class AlmasixSymbolReference(
     private val target: AlmasixSymbolResolver.Target,
     val kind: SymbolKind,
     val symbolName: String,
-) : PsiReferenceBase<PsiElement>(element, rangeInElement, /* soft = */ true),
+) : PsiReferenceBase<PsiElement>(element, rangeInElement, /* soft = */ false),
     EmptyResolveMessageProvider {
     override fun resolve(): PsiElement =
         AlmasixSymbolPsiElement(element.project, kind, symbolName, target)

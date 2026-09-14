@@ -5,14 +5,16 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiManager
 import com.intellij.psi.impl.FakePsiElement
 import java.util.Objects
 
 /**
  * Stable PSI stand-in for an Almasix indexed symbol (route/view/config/…).
  *
- * Soft string references resolve here so Find Usages / ReferencesSearch can
- * key off `(kind, name)` rather than ephemeral file descriptors.
+ * Resolves from string references so Find Usages / ReferencesSearch can key off
+ * `(kind, name)`. [getContainingFile] points at the indexed target so the IDE
+ * treats the reference like a real go-to link (underline + hand cursor).
  */
 class AlmasixSymbolPsiElement(
     private val project: Project,
@@ -21,8 +23,15 @@ class AlmasixSymbolPsiElement(
     private val target: AlmasixSymbolResolver.Target? = null,
 ) : FakePsiElement() {
     override fun getProject(): Project = project
-    override fun getParent(): PsiElement? = null
-    override fun getContainingFile(): PsiFile? = null
+
+    override fun getParent(): PsiElement? = getContainingFile()
+
+    override fun getContainingFile(): PsiFile? {
+        val path = target?.path ?: return null
+        val vFile = LocalFileSystem.getInstance().findFileByPath(path) ?: return null
+        return PsiManager.getInstance(project).findFile(vFile)
+    }
+
     override fun getName(): String = symbolName
     override fun getPresentableText(): String = "${kind.name.lowercase()}: $symbolName"
     override fun canNavigate(): Boolean = target != null

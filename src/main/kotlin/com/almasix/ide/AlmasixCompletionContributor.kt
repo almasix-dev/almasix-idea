@@ -5,6 +5,8 @@ import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionProvider
 import com.intellij.codeInsight.completion.CompletionResultSet
 import com.intellij.codeInsight.completion.CompletionType
+import com.intellij.codeInsight.completion.InsertHandler
+import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.util.ProcessingContext
@@ -40,7 +42,6 @@ class AlmasixCompletionContributor : CompletionContributor() {
                     val before = document.text.substring(0, offset.coerceAtMost(document.textLength))
                     val site = CallSiteDetector.detect(before, dotenvFile = isEnv) ?: run {
                         if (isPrism && before.trimEnd().endsWith("@").not()) {
-                            // Ctrl+Space in markup: directives + template globals
                             val prefix = result.prefixMatcher.prefix
                             addAll(result, index.directives, "directive", prefix)
                             addAll(result, index.templateVarNames(), "helper", prefix)
@@ -60,6 +61,10 @@ class AlmasixCompletionContributor : CompletionContributor() {
                                 .withPresentableText(label),
                         )
                     }
+
+                    if (isEnv && site.kind == SymbolKind.ENV) {
+                        addEnvBulkInsert(prefixed, index, site.prefix)
+                    }
                 }
             },
         )
@@ -68,6 +73,29 @@ class AlmasixCompletionContributor : CompletionContributor() {
     companion object {
         fun symbolsFor(index: AlmasixIndex, site: CallSiteDetector.Site): List<Pair<String, String>> =
             AlmasixCompletionCatalog.symbolsFor(index, site)
+
+        private fun addEnvBulkInsert(
+            result: CompletionResultSet,
+            index: AlmasixIndex,
+            prefix: String,
+        ) {
+            val offer = AlmasixEnvBulkInsert.offer(index.envKeys.keys, prefix) ?: return
+            val insertion = AlmasixEnvBulkInsert.dotenvInsertion(offer.keys)
+            val handler = InsertHandler<LookupElement> { context, _ ->
+                val doc = context.document
+                val start = context.startOffset
+                val end = context.tailOffset
+                doc.replaceString(start, end, insertion)
+                context.editor.caretModel.moveToOffset(start + insertion.length)
+            }
+            result.addElement(
+                LookupElementBuilder.create(offer.lookupString)
+                    .withPresentableText(offer.presentableText)
+                    .withTypeText("env bulk", true)
+                    .withInsertHandler(handler)
+                    .bold(),
+            )
+        }
 
         private fun addAll(
             result: CompletionResultSet,

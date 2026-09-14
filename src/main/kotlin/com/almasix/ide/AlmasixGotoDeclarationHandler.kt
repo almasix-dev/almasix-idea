@@ -60,10 +60,11 @@ object AlmasixNavigation {
     fun navigationElement(project: Project, target: AlmasixSymbolResolver.Target): PsiElement? {
         val vFile = LocalFileSystem.getInstance().findFileByPath(target.path) ?: return null
         val line = target.line.coerceAtLeast(0)
+        val psiFile = com.intellij.psi.PsiManager.getInstance(project).findFile(vFile)
         return object : FakePsiElement() {
-            override fun getParent(): PsiElement? = null
+            override fun getParent(): PsiElement? = psiFile
             override fun getProject(): Project = project
-            override fun getContainingFile() = null
+            override fun getContainingFile() = psiFile
             override fun getName(): String = target.path
             override fun canNavigate(): Boolean = true
             override fun canNavigateToSource(): Boolean = true

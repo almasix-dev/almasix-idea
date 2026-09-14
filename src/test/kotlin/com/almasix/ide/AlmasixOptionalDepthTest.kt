@@ -158,7 +158,8 @@ class AlmasixOptionalDepthTest {
 
         val model = AlmasixFileTemplates.resolve("model", "Author")!!
         assertEquals("app/models/author.py", model.relativePath.replace('\\', '/'))
-        assertTrue(model.contents.contains("class Author"))
+        assertTrue(model.contents.contains("class Author(HasFactory, Model)"))
+        assertTrue(model.contents.contains("fillable: tuple[str, ...] = ()"))
 
         val view = AlmasixFileTemplates.resolve("view", "posts.index")!!
         assertTrue(view.relativePath.contains("posts/index.prism.html"))
@@ -321,5 +322,19 @@ class AlmasixOptionalDepthTest {
         AlmasixStubFileWriter.write(path, "two")
         assertEquals("two", Files.readString(path))
         assertFalse(AlmasixStubFileWriter.writeIfAbsent(path, "three"))
+    }
+
+    @Test
+    fun envBulkInsertOffer() {
+        val keys = listOf("MAIL_HOST", "MAIL_PORT", "MAIL_USERNAME", "APP_KEY")
+        val offer = AlmasixEnvBulkInsert.offer(keys, "MAIL")!!
+        assertEquals(3, offer.keys.size)
+        assertTrue(offer.presentableText.contains("MAIL_*"))
+        assertTrue(offer.presentableText.contains("3 keys"))
+        val body = AlmasixEnvBulkInsert.dotenvInsertion(offer.keys)
+        assertTrue(body.contains("MAIL_HOST="))
+        assertTrue(body.contains("MAIL_PORT="))
+        assertNull(AlmasixEnvBulkInsert.offer(keys, "APP_KEY"))
+        assertNull(AlmasixEnvBulkInsert.offer(keys, ""))
     }
 }

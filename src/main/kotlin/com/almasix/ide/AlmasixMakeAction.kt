@@ -4,16 +4,12 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
-import com.intellij.openapi.command.WriteCommandAction
-import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.ui.Messages
-import com.intellij.openapi.vfs.LocalFileSystem
-import java.nio.file.Path
 
 /**
- * Almasix menu → New… → individual `smith make:*` / local file-template actions.
- * Thin UI shell; catalog + templates live in [AlmasixMakeCatalog] / [AlmasixFileTemplates].
+ * Almasix menu → New… → `smith make:*` actions (scaffolder parity).
+ * Interactive model dialog collects companion flags; everything else is a name prompt.
  */
 class AlmasixMakeActionGroup : DefaultActionGroup("New…", true), DumbAware {
     init {
@@ -44,42 +40,26 @@ class AlmasixMakeAction(
             )
             return
         }
-        val name = if (generator.namePrompt != null) {
-            Messages.showInputDialog(
-                project,
-                generator.namePrompt,
-                AlmasixMakeCatalog.menuLabel(generator),
-                Messages.getQuestionIcon(),
-            ) ?: return
+
+        val args = if (generator.id == "model" && generator.interactive) {
+            val prompted = AlmasixModelMakeDialog.prompt(project) ?: return
+            AlmasixMakeCatalog.modelSmithArgs(prompted.first, prompted.second)
         } else {
-            null
-        }
-        if (generator.namePrompt != null && name.isNullOrBlank()) return
-
-        val template = name?.let { AlmasixFileTemplates.resolve(generator.id, it) }
-        if (template != null) {
-            val absolute = root.resolve(template.relativePath).normalize()
-            WriteCommandAction.runWriteCommandAction(project) {
-                AlmasixStubFileWriter.writeIfAbsent(absolute, template.contents)
+            val name = if (generator.namePrompt != null) {
+                Messages.showInputDialog(
+                    project,
+                    generator.namePrompt,
+                    AlmasixMakeCatalog.menuLabel(generator),
+                    Messages.getQuestionIcon(),
+                ) ?: return
+            } else {
+                null
             }
-            if (template.openAfterCreate) {
-                val vFile = LocalFileSystem.getInstance()
-                    .refreshAndFindFileByPath(absolute.toString())
-                if (vFile != null) {
-                    FileEditorManager.getInstance(project).openFile(vFile, true)
-                }
-            }
-            AlmasixProjectService.getInstance(project).rebuild()
-            Messages.showInfoMessage(
-                project,
-                "Created ${template.relativePath}",
-                "Almasix",
-            )
-            return
+            if (generator.namePrompt != null && name.isNullOrBlank()) return
+            AlmasixMakeCatalog.byId(generator.id)?.smithArgs(name)
+                ?: generator.smithArgs(name)
         }
 
-        val args = AlmasixMakeCatalog.byId(generator.id)?.smithArgs(name)
-            ?: generator.smithArgs(name)
         AlmasixSmithRunner.run(project, root, args)
         Messages.showInfoMessage(
             project,

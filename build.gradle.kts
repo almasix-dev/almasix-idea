@@ -64,6 +64,11 @@ intellijPlatform {
         changeNotes.set(
             """
             <ul>
+              <li>0.3.1 — Ctrl-hover underline/hand cursor on Almasix symbols; suppress
+                  Blueprint <code>table.</code> column dumps; Prism file icon from
+                  <code>art/prism/prism-file.svg</code>; New… runs <code>smith make:*</code>
+                  (interactive <code>make:model</code> companions); <code>.env</code>
+                  “Insert all MAIL_*” bulk completion.</li>
               <li>0.3.0 — Almasix Idea exhaust: Find Usages, safe Rename (incl. view
                   file moves + config key definitions), code actions, local New File
                   templates + <code>smith make:*</code>, Tool Window, hover / Prism
@@ -159,6 +164,8 @@ kover {
                     "com.almasix.ide.AlmasixMakeAction*",
                     "com.almasix.ide.AlmasixMakeActionGroup",
                     "com.almasix.ide.AlmasixMakeActionGroup*",
+                    "com.almasix.ide.AlmasixModelMakeDialog",
+                    "com.almasix.ide.AlmasixModelMakeDialog*",
                     "com.almasix.ide.AlmasixToolWindowFactory",
                     "com.almasix.ide.AlmasixToolWindowFactory*",
                     "com.almasix.ide.AlmasixToolWindowPanel",

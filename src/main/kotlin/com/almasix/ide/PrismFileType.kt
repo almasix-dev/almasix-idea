@@ -22,7 +22,8 @@ class PrismFileType private constructor() :
 
     override fun getDefaultExtension(): String = "prism.html"
 
-    override fun getIcon(): Icon = IconLoader.getIcon("/icons/prism.svg", PrismFileType::class.java)
+    override fun getIcon(): Icon =
+        IconLoader.getIcon("/icons/prism.svg", PrismFileType::class.java)
 
     override fun isMyFileType(file: VirtualFile): Boolean =
         !file.isDirectory && isPrismFileName(file.name)

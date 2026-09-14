@@ -204,8 +204,25 @@ class AlmasixRefactorPlannerTest {
         assertTrue(AlmasixModelResolver.columnsFor(metaOnly, "author").contains("secret"))
         assertEquals("User", AlmasixModelResolver.authUserModel(metaOnly))
         assertTrue(AlmasixModelResolver.columnsFor(metaOnly, null).isEmpty())
-        // Unknown hint with no tables → empty flatMap
+        // Unknown hint → empty (never dump every DB column)
         assertTrue(AlmasixModelResolver.columnsFor(AlmasixIndex(ok = true), "Ghost").isEmpty())
+        // Blueprint `table.` must not offer schema columns
+        assertTrue(AlmasixModelResolver.columnsFor(metaOnly, "table").isEmpty())
+        val tableAttr = CallSiteDetector.detect("table.ema")
+        assertEquals(SymbolKind.ATTR, tableAttr!!.kind)
+        assertTrue(
+            AlmasixCompletionCatalog.symbolsFor(
+                AlmasixIndex(
+                    ok = true,
+                    tables = mapOf(
+                        "users" to AlmasixIndex.TableEntry(
+                            columns = mapOf("email" to AlmasixIndex.Located()),
+                        ),
+                    ),
+                ),
+                tableAttr,
+            ).isEmpty(),
+        )
         // user heuristic → authUserModel
         assertEquals(
             "User",

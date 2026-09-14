@@ -50,6 +50,8 @@ class AlmasixAnnotator : Annotator {
         if (range.startOffset >= range.endOffset) return
 
         if (resolvable) {
+            // Always paint the Ctrl-hover hyperlink style so the affordance is
+            // visible even when a soft/hard PsiReference is slow to attach.
             holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
                 .range(range)
                 .textAttributes(DefaultLanguageHighlighterColors.HIGHLIGHTED_REFERENCE)

@@ -9,6 +9,8 @@ object AlmasixModelResolver {
     private val SKIP = setOf(
         "DB", "Schema", "Blueprint", "Migration", "Path", "Model",
         "self", "cls", "os", "re", "sys", "ast", "json",
+        // Migration Blueprint parameter — never treat as an Articulate model.
+        "table", "define",
     )
 
     /** Builder / query chain segments that do not change the model. */
@@ -56,18 +58,27 @@ object AlmasixModelResolver {
 
     /**
      * Columns for a model/table hint: migration schema first, then fillable/casts.
+     * Unknown receivers (e.g. Blueprint ``table.``) return empty — never dump every
+     * column in the database.
      */
     fun columnsFor(index: AlmasixIndex, hint: String?): Set<String> {
+        if (hint.isNullOrBlank()) return emptySet()
+        if (hint == AUTH_USER_SENTINEL) {
+            return columnsForResolved(index, authUserModel(index))
+        }
+        val peeled = peelModelHint(hint)
+        if (peeled in SKIP || peeled.equals("table", ignoreCase = true)) {
+            return emptySet()
+        }
         val tableName = resolveTable(index, hint)
         if (tableName != null) {
             val cols = index.tables[tableName]?.columns?.keys.orEmpty()
             if (cols.isNotEmpty()) return cols
         }
-        val model = when {
-            hint == AUTH_USER_SENTINEL -> authUserModel(index)
-            hint.isNullOrBlank() -> null
-            else -> peelModelHint(hint)
-        } ?: return index.tables.values.flatMap { it.columns.keys }.toSet()
+        return columnsForResolved(index, peeled)
+    }
+
+    private fun columnsForResolved(index: AlmasixIndex, model: String): Set<String> {
         index.modelMetadata[model]?.let { meta ->
             return (meta.fillable + meta.guarded + meta.hidden + meta.casts.keys).toSet()
         }
@@ -75,7 +86,7 @@ object AlmasixModelResolver {
             val meta = it.value
             return (meta.fillable + meta.guarded + meta.hidden + meta.casts.keys).toSet()
         }
-        return index.tables.values.flatMap { it.columns.keys }.toSet()
+        return emptySet()
     }
 
     fun authUserModel(index: AlmasixIndex): String {

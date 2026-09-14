@@ -23,6 +23,43 @@ class AlmasixMakeCatalogTest {
     }
 
     @Test
+    fun modelSmithArgsMatchScaffolderFlags() {
+        assertEquals(
+            "make:model Post",
+            AlmasixMakeCatalog.modelSmithArgs("Post", AlmasixMakeCatalog.ModelOptions()),
+        )
+        assertEquals(
+            "make:model Post -a",
+            AlmasixMakeCatalog.modelSmithArgs("Post", AlmasixMakeCatalog.ModelOptions(all = true)),
+        )
+        assertEquals(
+            "make:model Post -m -f -s",
+            AlmasixMakeCatalog.modelSmithArgs(
+                "Post",
+                AlmasixMakeCatalog.ModelOptions(migration = true, factory = true, seed = true),
+            ),
+        )
+        assertEquals(
+            "make:model Post -r --api --policy -R",
+            AlmasixMakeCatalog.modelSmithArgs(
+                "Post",
+                AlmasixMakeCatalog.ModelOptions(
+                    resource = true, api = true, policy = true, requests = true,
+                ),
+            ),
+        )
+        assertTrue(AlmasixMakeCatalog.byId("model")!!.interactive)
+    }
+
+    @Test
+    fun offlineModelStubMatchesScaffolder() {
+        val spec = AlmasixFileTemplates.resolve("model", "Author")!!
+        assertTrue(spec.contents.contains("HasFactory"))
+        assertTrue(spec.contents.contains("fillable: tuple[str, ...] = ()"))
+        assertTrue(spec.contents.contains("class Author(HasFactory, Model)"))
+    }
+
+    @Test
     fun commandsAreMakePrefixed() {
         assertTrue(AlmasixMakeCatalog.ALL.all { it.command.startsWith("make:") })
         assertTrue(AlmasixMakeCatalog.ALL.all { it.id.isNotBlank() && it.label.isNotBlank() })
