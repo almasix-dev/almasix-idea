@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.4
+
+- `pluginIcon.svg` synced to the same official `almasix.svg` mark used by the
+  VS Code extension (in-IDE `icons/almasix.svg` already matched).
+
 ## 0.3.3
 
 First release from [`almasix-dev/almasix-idea`](https://github.com/almasix-dev/almasix-idea)
