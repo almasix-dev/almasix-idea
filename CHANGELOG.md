@@ -1,0 +1,20 @@
+# Changelog
+
+## 0.3.3
+
+First release from [`almasix-dev/almasix-idea`](https://github.com/almasix-dev/almasix-idea)
+(split from the former `ide-support` monorepo). Same Almasix Idea surface as
+**0.3.2** (PyCharm Professional / Community + WebStorm only); packaging and
+Marketplace publish now run from this repository.
+
+## 0.3.2
+
+Limit supported IDEs to PyCharm and WebStorm.
+
+## 0.3.1
+
+Hyperlinks, Blueprint quiet, scaffolder parity, interactive `make:model`, env bulk.
+
+## 0.3.0
+
+Find usages, rename, and ORM depth.

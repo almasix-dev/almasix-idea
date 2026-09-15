@@ -30,7 +30,7 @@ Does **not** use LSP4IJ / `almasix-lsp` (that path is for VS Code).
 1. Install **Almasix** from the JetBrains Marketplace (id `com.almasix.ide`),
    **or** **Settings → Plugins → ⚙ → Install Plugin from Disk…** with a zip from
    [GitHub Releases](https://github.com/almasix-dev/almasix-idea/releases)
-   (**0.3.2+**; PyCharm / WebStorm only). Prefer Almasix **0.9.1+** on the project
+   (**0.3.3+**; PyCharm / WebStorm only). Prefer Almasix **0.9.1+** on the project
    interpreter.
 2. Restart when prompted.
 3. Open an Almasix app (`bootstrap/app.py`). Ensure the **project interpreter**
