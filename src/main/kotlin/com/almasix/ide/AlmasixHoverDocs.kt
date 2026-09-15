@@ -25,7 +25,8 @@ object AlmasixHoverDocs {
         "include" to "`@include('partial')` — render another view inline.",
         "component" to "`@component('name')` — component; `@endcomponent`.",
         "endcomponent" to "`@endcomponent` — closes a `@component` block.",
-        "section" to "`@section('name')` — layout section; `@endsection` / `@show`.",
+        "section" to
+            "`@section('name')` … `@endsection` / `@show`, or inline `@section('name', 'value')`.",
         "endsection" to "`@endsection` — closes a `@section` block.",
         "yield" to "`@yield('name')` — render a section from a child view.",
         "csrf" to "`@csrf` — hidden CSRF token field.",

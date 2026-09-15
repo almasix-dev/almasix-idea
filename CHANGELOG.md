@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.5
+
+- Prism structure: treat inline `@section('name', 'value')` as self-closing;
+  accept `@show` as a `@section` closer (matches the Prism compiler).
+
 ## 0.3.4
 
 - `pluginIcon.svg` synced to the same official `almasix.svg` mark used by the

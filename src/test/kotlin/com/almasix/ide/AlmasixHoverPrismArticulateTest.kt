@@ -67,6 +67,33 @@ class AlmasixPrismStructureTest {
         val issues = AlmasixPrismStructure.analyze("@if(1)\n@endforeach")
         assertTrue(issues.any { it.message.contains("Expected") })
     }
+
+    @Test
+    fun inlineSectionNeedsNoEnd() {
+        assertTrue(AlmasixPrismStructure.analyze("@section('title', 'The title')").isEmpty())
+        assertTrue(AlmasixPrismStructure.analyze("@section(\"title\", \"Hello, world\")").isEmpty())
+        assertTrue(
+            AlmasixPrismStructure.analyze("@extends('layouts.app')\n@section('title', 'Hi')\n")
+                .isEmpty(),
+        )
+    }
+
+    @Test
+    fun blockSectionStillNeedsEnd() {
+        val issues = AlmasixPrismStructure.analyze("@section('title')\nHi")
+        assertEquals(1, issues.size)
+        assertTrue(issues[0].message.contains("Unclosed @section"))
+        assertTrue(
+            AlmasixPrismStructure.analyze("@section('title')\nHi\n@endsection").isEmpty(),
+        )
+    }
+
+    @Test
+    fun showClosesSection() {
+        assertTrue(
+            AlmasixPrismStructure.analyze("@section('content')\n<body>\n@show").isEmpty(),
+        )
+    }
 }
 
 class AlmasixArticulateHelpersTest {
