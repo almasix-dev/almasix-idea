@@ -2,10 +2,10 @@ blank_issues_enabled: false
 contact_links:
   - name: Editor setup docs
     url: https://docs.almasix.com/editor-setup/
-    about: Framework editor setup and Prism tooling.
+    about: Read the docs before filing — many answers are already there.
   - name: Discussions
     url: https://github.com/almasix-dev/almasix-idea/discussions
-    about: Questions and open-ended conversation (not bug trackers).
+    about: Questions and open chat (not the bug tracker).
   - name: Almasix org
     url: https://github.com/almasix-dev
-    about: Other first-party packages and the Almasix organization.
+    about: Other first-party packages.

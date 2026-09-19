@@ -1,70 +1,19 @@
 name: Bug report
-description: Something isn't working as documented or expected.
+description: Something isn't working in the editor plugin.
 title: "bug: "
 labels: ["bug", "needs-triage"]
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for filing a bug. Please fill every section you can.
-
   - type: input
     id: version
     attributes:
-      label: Extension / plugin version
-      description: Marketplace or build version
+      label: Plugin version
+      description: Marketplace / build version
     validations:
       required: true
-
-  - type: input
-    id: ide-version
-    attributes:
-      label: IDE version
-      description: VS Code / Cursor / JetBrains build
-    validations:
-      required: false
-
-  - type: dropdown
-    id: area
-    attributes:
-      label: Area
-      options:
-        - Language features
-        - Inspections / completion
-        - smith ide:index
-        - Plugin settings
-        - Marketplace publish
-        - Docs
-        - Other
-    validations:
-      required: true
-
   - type: textarea
-    id: what-happened
+    id: bug
     attributes:
-      label: What happened?
+      label: Bug
+      description: What you did, what happened, what you expected. IDE version if relevant.
     validations:
       required: true
-
-  - type: textarea
-    id: expected
-    attributes:
-      label: Expected behavior
-    validations:
-      required: true
-
-  - type: textarea
-    id: repro
-    attributes:
-      label: Steps to reproduce
-      render: markdown
-    validations:
-      required: true
-
-  - type: textarea
-    id: logs
-    attributes:
-      label: Logs / screenshots
-      render: shell
-    validations:
-      required: false
