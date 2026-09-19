@@ -1,24 +1,13 @@
 name: Feature request
-description: Propose a concrete feature or improvement.
+description: A concrete change you want shipped.
 title: "feat: "
 labels: ["enhancement", "needs-triage"]
 body:
-  - type: input
-    id: summary
-    attributes:
-      label: Summary
-    validations:
-      required: true
   - type: textarea
-    id: problem
+    id: request
     attributes:
-      label: Problem
-    validations:
-      required: true
-  - type: textarea
-    id: proposal
-    attributes:
-      label: Proposed solution
+      label: Request
+      description: What should exist, and why. API sketch welcome. Use Idea for half-baked thoughts; RFC for large design.
       render: markdown
     validations:
       required: true

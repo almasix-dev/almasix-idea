@@ -1,18 +1,13 @@
 name: Suggestion / idea
-description: Lightweight suggestion or idea.
+description: Early thought — not a full feature spec.
 title: "idea: "
 labels: ["idea", "needs-triage"]
 body:
-  - type: input
-    id: title-idea
+  - type: textarea
+    id: idea
     attributes:
       label: Idea
-    validations:
-      required: true
-  - type: textarea
-    id: details
-    attributes:
-      label: Details
+      description: One sharp idea. Promote to Feature request when the ask is concrete.
       render: markdown
     validations:
       required: true
